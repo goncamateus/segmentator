@@ -1,0 +1,27 @@
+# Static-region mask + fixed mean background, previewed in a window.
+# Reproduces the original hardcoded gasvid_0.py pipeline exactly.
+name: baseline
+
+source:
+  type: video
+  path: inputs/gasvid.mp4
+
+stages:
+  - {type: gray}
+  - {type: median_blur, ksize: 7}
+
+  # Fitted once on the first smoothed frame; selects the dark region of interest
+  # and publishes it for the stages below.
+  - {type: static_mask, threshold: 127, invert: true}
+
+  # Averages the first 60 masked frames, then subtracts that mean from every frame.
+  - {type: mean_background, n_frames: 60, use_mask: true}
+  - {type: apply_mask, fill: 0}
+
+  # tozero keeps the magnitude of pixels above the level and zeroes the rest;
+  # tozero_inv then clips near-saturated pixels (reflections) back to zero.
+  - {type: threshold, value: 15, mode: tozero}
+  - {type: threshold, value: 200, mode: tozero_inv}
+
+sinks:
+  - {type: display, size: [640, 480]}

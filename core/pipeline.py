@@ -1,0 +1,176 @@
+"""Pipeline core: per-frame context, component protocols, registry, runner.
+
+A pipeline is an ordered list of :class:`Stage` objects applied to every frame,
+plus a :class:`Source` to read from and one or more :class:`Sink` objects to
+write to. Components are looked up by name so a whole pipeline can be described
+in YAML, or composed directly in Python.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Protocol, runtime_checkable
+
+import numpy as np
+import yaml
+
+
+@dataclass
+class Ctx:
+    """State for a single frame, passed down the stage chain.
+
+    Attributes:
+        image: The working array. Stages read it and **assign a new array** to it.
+        source: The original BGR frame, untouched by any stage.
+        index: Zero-based frame number.
+        store: Side channel for artifacts one stage produces and a later stage
+            consumes within the same frame (e.g. ``store["mask"]``). Discarded
+            after the frame; state that must survive across frames belongs on
+            the stage instance.
+
+    Note:
+        ``image`` and ``source`` alias the same buffer when the frame enters the
+        chain, so stages must never modify the array in place — always rebind
+        ``ctx.image``. No defensive copy is taken, since these videos are large
+        enough that a per-frame copy is pure waste.
+    """
+
+    image: np.ndarray
+    source: np.ndarray
+    index: int = 0
+    store: dict[str, Any] = field(default_factory=dict)
+
+
+@runtime_checkable
+class Stage(Protocol):
+    """One transformation applied to every frame."""
+
+    def apply(self, ctx: Ctx) -> None:
+        """Transform ``ctx.image`` in place on the context (rebinding, not mutating)."""
+
+
+@runtime_checkable
+class Source(Protocol):
+    """A frame producer."""
+
+    fps: float
+    size: tuple[int, int]  # (width, height)
+
+    def __iter__(self) -> Iterator[np.ndarray]: ...
+
+    def close(self) -> None: ...
+
+
+@runtime_checkable
+class Sink(Protocol):
+    """A consumer of finished frames."""
+
+    def write(self, ctx: Ctx) -> bool:
+        """Consume the frame. Return ``False`` to ask the pipeline to stop."""
+
+    def close(self) -> None: ...
+
+
+# --------------------------------------------------------------------------- #
+# Registry
+# --------------------------------------------------------------------------- #
+
+_REGISTRY: dict[str, dict[str, type]] = {"source": {}, "stage": {}, "sink": {}}
+
+
+def register(kind: str, name: str) -> Callable[[type], type]:
+    """Class decorator registering a component under ``kind``/``name``."""
+
+    def decorate(cls: type) -> type:
+        _REGISTRY[kind][name] = cls
+        return cls
+
+    return decorate
+
+
+def build(kind: str, spec: Mapping[str, Any]) -> Any:
+    """Instantiate one component from a ``{"type": name, **kwargs}`` mapping."""
+    params = dict(spec)
+    try:
+        name = params.pop("type")
+    except KeyError:
+        raise KeyError(f"{kind} spec is missing a 'type' key: {spec!r}") from None
+    table = _REGISTRY[kind]
+    if name not in table:
+        raise KeyError(f"unknown {kind} {name!r}; known: {sorted(table)}")
+    return table[name](**params)
+
+
+def registered(kind: str) -> list[str]:
+    """Names available for a component kind — handy for error messages and docs."""
+    return sorted(_REGISTRY[kind])
+
+
+# --------------------------------------------------------------------------- #
+# Pipeline
+# --------------------------------------------------------------------------- #
+
+
+class Pipeline:
+    """Runs ``source -> stages -> sinks``. Use as a context manager to release both."""
+
+    def __init__(self, source: Source, stages: Sequence[Stage], sinks: Sequence[Sink]):
+        self.source = source
+        self.stages = list(stages)
+        self.sinks = list(sinks)
+
+    @classmethod
+    def from_config(cls, cfg: Mapping[str, Any]) -> Pipeline:
+        """Build from a parsed config mapping (``source`` / ``stages`` / ``sinks``)."""
+        # Imported here, not at module scope: these modules import `register` from
+        # this one, so a top-level import would be circular. Importing them is what
+        # populates the registry with the built-in components.
+        from core import io, stages  # noqa: F401
+
+        source = build("source", cfg["source"])
+        built_stages = [build("stage", s) for s in cfg.get("stages", [])]
+        built_sinks = [build("sink", s) for s in cfg.get("sinks", [])]
+        for sink in built_sinks:
+            bind = getattr(sink, "bind_source", None)
+            if bind is not None:
+                bind(source)
+        return cls(source, built_stages, built_sinks)
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> Pipeline:
+        """Build from a YAML file."""
+        with open(path, encoding="utf-8") as handle:
+            return cls.from_config(yaml.safe_load(handle))
+
+    def run(self, max_frames: int | None = None) -> int:
+        """Process frames until the source ends, a sink stops, or ``max_frames``.
+
+        Returns:
+            Number of frames processed.
+        """
+        count = 0
+        for index, frame in enumerate(self.source):
+            if max_frames is not None and index >= max_frames:
+                break
+            ctx = Ctx(image=frame, source=frame, index=index)
+            for stage in self.stages:
+                stage.apply(ctx)
+            count += 1
+            # List comprehension, not a generator: `all` short-circuits, which would
+            # skip the video writer the moment a display window returned False.
+            if not all([sink.write(ctx) for sink in self.sinks]):
+                break
+        return count
+
+    def close(self) -> None:
+        for sink in self.sinks:
+            sink.close()
+        self.source.close()
+
+    def __enter__(self) -> Pipeline:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()

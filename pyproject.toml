@@ -8,4 +8,5 @@ dependencies = [
     "matplotlib>=3.11.1",
     "opencv-contrib-python>=5.0.0.93",
     "opencv-python>=5.0.0.93",
+    "pyyaml>=6.0",
 ]
