@@ -31,6 +31,7 @@ from PyQt6.QtGui import (
     QKeySequence,
     QPainter,
     QPixmap,
+    QShortcut,
 )
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -623,14 +624,14 @@ class MainWindow(QMainWindow):
 
         transport = QHBoxLayout()
         for text, slot, tip in (
-            ("◀◀", lambda: self.jump(-10), "back 10 frames"),
-            ("◀", lambda: self.jump(-1), "previous frame"),
+            ("◀◀", lambda: self.jump(-1), "previous frame"),
             ("▶", self.toggle_play, "play / pause"),
             ("▶▶", lambda: self.jump(1), "next frame"),
         ):
             button = QPushButton(text)
             button.setToolTip(tip)
             button.setFixedSize(36, 22)
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             button.clicked.connect(slot)
             transport.addWidget(button)
             if text == "▶":
@@ -639,6 +640,10 @@ class MainWindow(QMainWindow):
         self.slider.sliderMoved.connect(self.on_slider)
         transport.addWidget(self.slider, 1)
         layout.addLayout(transport)
+
+        QShortcut(QKeySequence(","), self, activated=lambda: self.jump(-1))
+        QShortcut(QKeySequence("."), self, activated=lambda: self.jump(1))
+        QShortcut(QKeySequence(Qt.Key.Key_Space), self, activated=self.toggle_play)
         return panel
 
     def _menus(self) -> None:
