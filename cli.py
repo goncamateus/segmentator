@@ -1,7 +1,7 @@
-"""Run a video-processing pipeline described by a YAML config.
+"""Run an image- or video-processing pipeline described by a YAML config.
 
-    python gasvid.py configs/baseline.yaml
-    python gasvid.py configs/mog2_contours.yaml --video inputs/gasvid1.mp4 --max-frames 300
+    segmentator configs/baseline.yaml
+    segmentator configs/mog2_contours.yaml --video inputs/gasvid1.mp4 --max-frames 300
 """
 
 import argparse
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from core.pipeline import Pipeline
+from segmentator.pipeline import Pipeline
 
 
 def load_config(path: Path, video: Path | None, output: Path | None) -> dict:

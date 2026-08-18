@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" width="1000" height="520" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <title>Node canvas with a live preview inside every box</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/>
+    </marker>
+    <linearGradient id="plume" x1="0" y1="1" x2="0.3" y2="0">
+      <stop offset="0%" stop-color="#12161c"/><stop offset="55%" stop-color="#3d4a5c"/><stop offset="100%" stop-color="#9fb3c8"/>
+    </linearGradient>
+    <linearGradient id="edges" x1="0" y1="1" x2="0.3" y2="0">
+      <stop offset="0%" stop-color="#05070a"/><stop offset="70%" stop-color="#1b2430"/><stop offset="100%" stop-color="#e8eef5"/>
+    </linearGradient>
+    <linearGradient id="heat" x1="0" y1="1" x2="0.3" y2="0">
+      <stop offset="0%" stop-color="#0b1a3a"/><stop offset="45%" stop-color="#1f8a70"/><stop offset="80%" stop-color="#e8b53a"/><stop offset="100%" stop-color="#d94f34"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1000" height="520" fill="#eef1f5"/>
+  <g stroke="#dfe4ea" stroke-width="1">
+    <path d="M0 40H1000M0 80H1000M0 120H1000M0 160H1000M0 200H1000M0 240H1000M0 280H1000M0 320H1000M0 360H1000M0 400H1000M0 440H1000M0 480H1000"/>
+    <path d="M40 0V520M80 0V520M120 0V520M160 0V520M200 0V520M240 0V520M280 0V520M320 0V520M360 0V520M400 0V520M440 0V520M480 0V520M520 0V520M560 0V520M600 0V520M640 0V520M680 0V520M720 0V520M760 0V520M800 0V520M840 0V520M880 0V520M920 0V520M960 0V520"/>
+  </g>
+
+  <rect x="0" y="0" width="1000" height="34" fill="#ffffff"/>
+  <line x1="0" y1="34" x2="1000" y2="34" stroke="#cbd2d9"/>
+  <text x="16" y="22" font-size="13" fill="#3e4c59" font-weight="600">motion.yaml</text>
+  <text x="130" y="22" font-size="12" fill="#7b8794">frame 412 / 1800 · 24 fps · previews 4 fps</text>
+  <g transform="translate(880 10)">
+    <rect width="14" height="14" rx="2" fill="#1f8a70"/><polygon points="4,3 4,11 11,7" fill="#fff"/>
+    <rect x="22" width="14" height="14" rx="2" fill="#cbd2d9"/><rect x="26" y="3" width="3" height="8" fill="#52606d"/><rect x="31" y="3" width="3" height="8" fill="#52606d"/>
+    <rect x="44" width="14" height="14" rx="2" fill="#cbd2d9"/><rect x="48" y="3" width="6" height="8" fill="#52606d"/>
+  </g>
+
+  <g stroke="#7b8794" stroke-width="2" fill="none" marker-end="url(#arrow)">
+    <path d="M148 128 C176 128 176 128 200 128"/>
+    <path d="M300 128 C328 128 328 128 352 128"/>
+    <path d="M452 128 C480 128 480 128 504 128"/>
+    <path d="M604 128 C632 128 632 128 656 128"/>
+    <path d="M604 128 C630 128 636 300 656 320" stroke-dasharray="0"/>
+    <path d="M804 128 C832 128 832 128 856 128"/>
+    <path d="M804 320 C832 320 832 320 856 320"/>
+  </g>
+
+  <g font-size="11">
+    <!-- source -->
+    <g transform="translate(48 78)">
+      <rect width="100" height="100" rx="6" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <rect width="100" height="20" rx="6" fill="#52606d"/><rect y="12" width="100" height="8" fill="#52606d"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">video</text>
+      <rect x="8" y="26" width="84" height="52" fill="url(#plume)"/>
+      <text x="8" y="92" fill="#7b8794" font-size="9">gasvid.mp4</text>
+      <circle cx="100" cy="50" r="5" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <!-- gray -->
+    <g transform="translate(200 78)">
+      <rect width="100" height="100" rx="6" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <rect width="100" height="20" rx="6" fill="#3e4c59"/><rect y="12" width="100" height="8" fill="#3e4c59"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">gray</text>
+      <rect x="8" y="26" width="84" height="52" fill="url(#plume)"/>
+      <text x="8" y="92" fill="#7b8794" font-size="9">—</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/><circle cx="100" cy="50" r="5" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <!-- farneback -->
+    <g transform="translate(352 78)">
+      <rect width="100" height="100" rx="6" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <rect width="100" height="20" rx="6" fill="#3e4c59"/><rect y="12" width="100" height="8" fill="#3e4c59"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">farneback</text>
+      <rect x="8" y="26" width="84" height="52" fill="url(#heat)"/>
+      <text x="8" y="92" fill="#7b8794" font-size="9">gain 160</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/><circle cx="100" cy="50" r="5" fill="#f0b429" stroke="#8a5a00"/>
+      <rect x="44" y="-14" width="56" height="14" rx="7" fill="#f0b429"/>
+      <text x="50" y="-4" font-size="9" fill="#5c3d00" font-weight="600">tap: flow</text>
+    </g>
+    <!-- threshold -->
+    <g transform="translate(504 78)">
+      <rect width="100" height="100" rx="6" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <rect width="100" height="20" rx="6" fill="#3e4c59"/><rect y="12" width="100" height="8" fill="#3e4c59"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">threshold</text>
+      <rect x="8" y="26" width="84" height="52" fill="#000"/>
+      <ellipse cx="56" cy="46" rx="15" ry="11" fill="#fff"/><ellipse cx="28" cy="66" rx="7" ry="5" fill="#fff"/>
+      <text x="8" y="92" fill="#7b8794" font-size="9">value 40</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/><circle cx="100" cy="50" r="5" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <!-- morphology (selected) -->
+    <g transform="translate(656 78)">
+      <rect width="148" height="100" rx="6" fill="#fff" stroke="#1f6feb" stroke-width="2.5"/>
+      <rect width="148" height="20" rx="6" fill="#1f6feb"/><rect y="12" width="148" height="8" fill="#1f6feb"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">morphology</text>
+      <rect x="8" y="26" width="84" height="52" fill="#000"/>
+      <ellipse cx="56" cy="46" rx="14" ry="10" fill="#fff"/>
+      <text x="100" y="38" fill="#3e4c59" font-size="9">op open</text>
+      <text x="100" y="52" fill="#3e4c59" font-size="9">ksize 3</text>
+      <text x="100" y="66" fill="#3e4c59" font-size="9">iter 1</text>
+      <text x="8" y="92" fill="#7b8794" font-size="9">selected</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/><circle cx="148" cy="50" r="5" fill="#f0b429" stroke="#8a5a00"/>
+      <rect x="88" y="-14" width="60" height="14" rx="7" fill="#f0b429"/>
+      <text x="94" y="-4" font-size="9" fill="#5c3d00" font-weight="600">tap: mask</text>
+    </g>
+    <!-- motion_objects -->
+    <g transform="translate(656 270)">
+      <rect width="148" height="100" rx="6" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <rect width="148" height="20" rx="6" fill="#3e4c59"/><rect y="12" width="148" height="8" fill="#3e4c59"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">motion_objects</text>
+      <rect x="8" y="26" width="84" height="52" fill="url(#plume)"/>
+      <rect x="38" y="40" width="26" height="20" fill="none" stroke="#f0b429" stroke-width="1.5"/>
+      <text x="100" y="38" fill="#3e4c59" font-size="9">min_area 50</text>
+      <text x="100" y="52" fill="#3e4c59" font-size="9">labels ✓</text>
+      <text x="8" y="92" fill="#7b8794" font-size="9">1 object · 2.9 px/f</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/><circle cx="148" cy="50" r="5" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <!-- sink: mask -->
+    <g transform="translate(856 78)">
+      <rect width="112" height="100" rx="6" fill="#fff" stroke="#1f8a70" stroke-width="2"/>
+      <rect width="112" height="20" rx="6" fill="#1f8a70"/><rect y="12" width="112" height="8" fill="#1f8a70"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">ffmpeg</text>
+      <rect x="8" y="26" width="96" height="52" fill="#000"/>
+      <ellipse cx="60" cy="46" rx="14" ry="10" fill="#fff"/>
+      <text x="8" y="92" fill="#7b8794" font-size="9">input: mask</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/>
+    </g>
+    <!-- sink: objects -->
+    <g transform="translate(856 270)">
+      <rect width="112" height="100" rx="6" fill="#fff" stroke="#1f8a70" stroke-width="2"/>
+      <rect width="112" height="20" rx="6" fill="#1f8a70"/><rect y="12" width="112" height="8" fill="#1f8a70"/>
+      <text x="8" y="14" fill="#fff" font-weight="600">ffmpeg</text>
+      <rect x="8" y="26" width="96" height="52" fill="url(#plume)"/>
+      <rect x="42" y="40" width="26" height="20" fill="none" stroke="#f0b429" stroke-width="1.5"/>
+      <text x="8" y="92" fill="#7b8794" font-size="9">objects.mp4</text>
+      <circle cx="0" cy="50" r="5" fill="#9aa5b1" stroke="#52606d"/>
+    </g>
+  </g>
+
+  <g transform="translate(48 400)">
+    <rect width="560" height="88" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="14" y="22" font-size="12" font-weight="600" fill="#3e4c59">Every box paints its own preview</text>
+    <text x="14" y="42" font-size="11" fill="#52606d">The worker emits one dict of downscaled thumbnails per tick; a node looks up its own</text>
+    <text x="14" y="58" font-size="11" fill="#52606d">tap name, a sink node looks up whatever its `input:` resolves to. Both go through the</text>
+    <text x="14" y="74" font-size="11" fill="#52606d">same `frame_for(ctx, key)` the engine already uses — no second code path.</text>
+  </g>
+</svg>

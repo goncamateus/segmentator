@@ -33,6 +33,12 @@ class Ctx:
             output a mid-chain frame. Filled by the pipeline runner, never by a
             stage — keeping it apart from ``store`` means a stage named ``mask``
             cannot shadow the ``store["mask"]`` artifact.
+        metrics: Per-frame scalars a stage measured (``motion_px``, ``contours``,
+            ``lbp_entropy``). What the ``json`` sink writes.
+        rows: Per-object detail, one list of flat dicts per kind (``contours``,
+            ``keypoints``, ``motion``). Kept apart from ``metrics`` because these
+            are what the ``csv`` and ``crops`` sinks consume, and there can be
+            four hundred contours behind a single ``contours=400`` metric.
 
     Note:
         ``image`` and ``source`` alias the same buffer when the frame enters the
@@ -46,6 +52,8 @@ class Ctx:
     index: int = 0
     store: dict[str, Any] = field(default_factory=dict)
     taps: dict[str, np.ndarray] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
+    rows: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
 def frame_for(ctx: Ctx, key: str = "image") -> np.ndarray:
@@ -182,7 +190,7 @@ class Pipeline:
         # Imported here, not at module scope: these modules import `register` from
         # this one, so a top-level import would be circular. Importing them is what
         # populates the registry with the built-in components.
-        from core import io, stages  # noqa: F401
+        from segmentator import io, stages  # noqa: F401
 
         source = build("source", cfg["source"])
         built_stages = _build_stages(cfg.get("stages", []))

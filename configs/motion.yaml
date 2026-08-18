@@ -1,0 +1,37 @@
+# Dense optical flow, accumulated into a heatmap and reduced to tracked objects.
+#
+# Every motion algorithm stops at a 0..255 heat image; the threshold, the
+# cleanup and the object extraction below are ordinary stages. Swapping
+# `farneback` for `mog2`, `lucas_kanade` or `three_frame_diff` is a one-line
+# edit and the rest of this file still means the same thing.
+name: motion
+
+source:
+  type: video
+  path: inputs/gasvid.mp4
+
+stages:
+  - {type: gray}
+  - {type: gaussian_blur, ksize: 5}
+
+  # gain is a calibration constant: this plume drifts under ~1.5 px/frame, which
+  # at the default gain of 32 peaks around 30 and is erased by the open below.
+  - {type: farneback, levels: 3, winsize: 21, gain: 160, name: flow}
+
+  # The rolling average, for the overlay. Leaves the frame alone, so the object
+  # path below still sees this frame's flow rather than the smoothed history.
+  - {type: motion_heat, window: 20}
+
+  - {type: threshold, value: 40, mode: binary}
+  - {type: morphology, op: open, ksize: 3, name: mask}
+
+  - {type: motion_objects, min_area: 50, max_travel: 60, labels: true, draw_on: source}
+
+sinks:
+  - {type: ffmpeg, path: outputs/motion/objects.mp4}
+  - {type: ffmpeg, path: outputs/motion/mask.mp4, input: mask}
+
+  # Per-object rows and per-frame scalars. `motion_objects` in the JSON is the
+  # number of rows the CSV holds for that frame.
+  - {type: csv, dir: outputs/motion}
+  - {type: json, path: outputs/motion/metrics.jsonl}

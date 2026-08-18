@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 480" width="920" height="480" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <title>How canvas nodes serialise to the config, and what cannot be drawn</title>
+  <defs>
+    <marker id="g-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/>
+    </marker>
+    <marker id="g-map" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b44d12"/>
+    </marker>
+  </defs>
+  <rect width="920" height="480" fill="#f5f7fa"/>
+
+  <text x="30" y="28" font-size="13" font-weight="600" fill="#3e4c59">Canvas</text>
+  <text x="470" y="28" font-size="13" font-weight="600" fill="#3e4c59">config.yaml</text>
+
+  <g font-size="11">
+    <g transform="translate(30 46)">
+      <rect width="120" height="34" rx="5" fill="#fff" stroke="#52606d" stroke-width="1.5"/>
+      <text x="12" y="22" fill="#1f2933">video</text>
+      <circle cx="120" cy="17" r="4" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <g transform="translate(30 106)">
+      <rect width="120" height="34" rx="5" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <text x="12" y="22" fill="#1f2933">gray</text>
+      <circle cx="0" cy="17" r="4" fill="#9aa5b1"/><circle cx="120" cy="17" r="4" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <g transform="translate(30 166)">
+      <rect width="120" height="34" rx="5" fill="#fff" stroke="#9aa5b1" stroke-width="1.5"/>
+      <text x="12" y="22" fill="#1f2933">canny</text>
+      <rect x="66" y="8" width="48" height="16" rx="8" fill="#f0b429"/>
+      <text x="72" y="20" font-size="9" fill="#5c3d00" font-weight="600">edges</text>
+      <circle cx="0" cy="17" r="4" fill="#9aa5b1"/><circle cx="120" cy="17" r="4" fill="#f0b429" stroke="#8a5a00"/>
+    </g>
+    <g transform="translate(30 246)">
+      <rect width="120" height="34" rx="5" fill="#fff" stroke="#1f8a70" stroke-width="1.5"/>
+      <text x="12" y="22" fill="#1f8a70">ffmpeg</text>
+      <circle cx="0" cy="17" r="4" fill="#9aa5b1"/>
+    </g>
+    <g transform="translate(200 246)">
+      <rect width="120" height="34" rx="5" fill="#fff" stroke="#1f8a70" stroke-width="1.5"/>
+      <text x="12" y="22" fill="#1f8a70">image</text>
+      <circle cx="0" cy="17" r="4" fill="#9aa5b1"/>
+    </g>
+  </g>
+
+  <g stroke="#7b8794" stroke-width="1.8" fill="none" marker-end="url(#g-arrow)">
+    <path d="M90 80 L90 100"/>
+    <path d="M90 140 L90 160"/>
+    <path d="M90 200 L90 240"/>
+    <path d="M150 183 C186 183 200 210 210 240"/>
+  </g>
+  <text x="222" y="212" font-size="10" fill="#b44d12">second consumer of the same tap</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+    <rect x="470" y="42" width="420" height="248" rx="6" fill="#1f2933"/>
+    <text x="486" y="64" fill="#9fb3c8">source:</text>
+    <text x="502" y="80" fill="#8fd14f">type: video</text>
+    <text x="502" y="96" fill="#8fd14f">path: inputs/gasvid.mp4</text>
+    <text x="486" y="120" fill="#9fb3c8">stages:</text>
+    <text x="502" y="136" fill="#e8eef5">- {type: gray}</text>
+    <text x="502" y="152" fill="#e8eef5">- {type: canny, </text>
+    <text x="614" y="152" fill="#f0b429">name: edges</text>
+    <text x="704" y="152" fill="#e8eef5">}</text>
+    <text x="486" y="176" fill="#9fb3c8">sinks:</text>
+    <text x="502" y="192" fill="#e8eef5">- {type: ffmpeg, path: out.mp4}</text>
+    <text x="502" y="208" fill="#e8eef5">- {type: image, path: e.png, </text>
+    <text x="502" y="224" fill="#f0b429">   input: edges</text>
+    <text x="606" y="224" fill="#e8eef5">}</text>
+    <text x="486" y="256" fill="#616e7c">// a node with no name is not addressable;</text>
+    <text x="486" y="272" fill="#616e7c">// naming it is what creates the tap.</text>
+  </g>
+
+  <g stroke="#b44d12" stroke-width="1.4" fill="none" marker-end="url(#g-map)" stroke-dasharray="5 3">
+    <path d="M156 183 C300 183 340 152 464 150"/>
+    <path d="M326 260 C400 260 400 224 464 222"/>
+  </g>
+
+  <g transform="translate(30 316)">
+    <rect width="410" height="140" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="14" y="24" font-size="12" font-weight="600" fill="#1f8a70">Expressible: a tree</text>
+    <text x="14" y="42" font-size="11" fill="#52606d">One producer, any number of consumers. Each node has</text>
+    <text x="14" y="58" font-size="11" fill="#52606d">exactly one input edge, so the graph flattens to an ordered</text>
+    <text x="14" y="74" font-size="11" fill="#52606d">list plus `name:` taps — which is what the format already is.</text>
+    <g transform="translate(14 86)" stroke="#1f8a70" stroke-width="1.5" fill="none">
+      <circle cx="10" cy="10" r="7" fill="#eafaf3"/><circle cx="70" cy="10" r="7" fill="#eafaf3"/>
+      <circle cx="130" cy="-4" r="7" fill="#eafaf3"/><circle cx="130" cy="24" r="7" fill="#eafaf3"/>
+      <path d="M17 10 H63M77 7 L123 -2M77 13 L123 22"/>
+    </g>
+  </g>
+
+  <g transform="translate(462 316)">
+    <rect width="428" height="140" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="14" y="24" font-size="12" font-weight="600" fill="#b44d12">Not expressible: a merge</text>
+    <text x="14" y="42" font-size="11" fill="#52606d">Two producers into one stage. `Pipeline.run` carries a single</text>
+    <text x="14" y="58" font-size="11" fill="#52606d">`ctx.image`, so a stage has nowhere to receive a second input.</text>
+    <text x="14" y="74" font-size="11" fill="#52606d">Option B in the document is what changes this: named buffers</text>
+    <text x="14" y="90" font-size="11" fill="#52606d">and a topological sort, ~40 lines.</text>
+    <g transform="translate(300 96)" stroke="#b44d12" stroke-width="1.5" fill="none">
+      <circle cx="10" cy="-14" r="7" fill="#fdf3d8"/><circle cx="10" cy="14" r="7" fill="#fdf3d8"/>
+      <circle cx="80" cy="0" r="7" fill="#fdf3d8"/>
+      <path d="M17 -12 L73 -3M17 12 L73 3"/>
+      <path d="M34 -22 L56 22" stroke="#d94f34" stroke-width="2"/>
+      <path d="M56 -22 L34 22" stroke="#d94f34" stroke-width="2"/>
+    </g>
+  </g>
+</svg>

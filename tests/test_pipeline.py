@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 import yaml
 
-from core.pipeline import Ctx, Pipeline, build, frame_for, register
-from core.stages import MeanBackground, StaticMask, Threshold
+from segmentator.pipeline import Ctx, Pipeline, build, frame_for, register
+from segmentator.stages.mask import MeanBackground, StaticMask
+from segmentator.stages.preprocess import Threshold
 
 
 @register("source", "_test_array")
@@ -260,3 +261,15 @@ def test_frame_for_rejects_unknown_and_non_image_names():
 
     with pytest.raises(KeyError, match="not an image"):
         frame_for(ctx, "contours")
+
+
+def test_display_sink_closes_without_ever_opening_a_window():
+    """A run that ends before its first frame must not crash on the way out.
+
+    `cv2.destroyWindow` on a window that was never created is a null-pointer
+    error out of highgui, and an empty source or `--max-frames 0` is not an
+    error worth crashing on.
+    """
+    from segmentator.io import DisplaySink
+
+    DisplaySink().close()

@@ -1,15 +1,17 @@
 [project]
-name = "gasvid-seg"
+name = "segmentator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Configuration-driven image and video segmentation pipelines"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "matplotlib>=3.11.1",
-    "opencv-contrib-python>=5.0.0.93",
     "opencv-python>=5.0.0.93",
     "pyyaml>=6.0",
+    "scikit-image>=0.24",
 ]
+
+[project.scripts]
+segmentator = "cli:main"
 
 [dependency-groups]
 dev = [
@@ -18,3 +20,13 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["cli"]
+
+[tool.setuptools.packages.find]
+include = ["segmentator*"]
