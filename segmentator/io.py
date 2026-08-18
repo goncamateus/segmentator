@@ -42,13 +42,40 @@ class VideoSource:
             int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
             int(self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
         )
+        self._next = 0  # the frame index the capture is positioned at
 
     def __iter__(self) -> Iterator[np.ndarray]:
         while True:
             ok, frame = self._cap.read()
             if not ok:
                 return
+            self._next += 1
             yield frame
+
+    @property
+    def count(self) -> int:
+        """Frames in the file, or 0 when the container will not say.
+
+        Some containers report 0 or a wild number; anything non-positive is
+        treated as unknown and the reader discovers the end by failing.
+        """
+        return max(0, int(self._cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+
+    def read(self, index: int) -> np.ndarray | None:
+        """Frame ``index``, or ``None`` past the end. For the editor's scrubbing.
+
+        Tracks its own position so playing forward never touches
+        ``CAP_PROP_POS_FRAMES``: setting it forces a keyframe hunt and a re-decode,
+        which is many times slower than reading the next frame. Ported from
+        goncanalyser ``core/source.py``.
+        """
+        if index != self._next:
+            self._cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, index))
+        ok, frame = self._cap.read()
+        if not ok:
+            return None
+        self._next = index + 1
+        return frame
 
     def close(self) -> None:
         self._cap.release()
@@ -74,6 +101,13 @@ class ImageSource:
 
     def __iter__(self) -> Iterator[np.ndarray]:
         yield self._frame
+
+    @property
+    def count(self) -> int:
+        return 1
+
+    def read(self, index: int) -> np.ndarray | None:
+        return self._frame if index == 0 else None
 
     def close(self) -> None:
         pass
@@ -115,6 +149,16 @@ class FolderSource:
             if frame is None:
                 raise OSError(f"Could not read image: {path}")
             yield frame
+
+    @property
+    def count(self) -> int:
+        return len(self.frames)
+
+    def read(self, index: int) -> np.ndarray | None:
+        """Frame ``index``, or ``None`` past the end. Random access is free here."""
+        if not 0 <= index < len(self.frames):
+            return None
+        return cv2.imread(str(self.frames[index]), cv2.IMREAD_COLOR)
 
     def close(self) -> None:
         pass

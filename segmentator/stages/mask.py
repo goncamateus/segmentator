@@ -28,6 +28,11 @@ class StaticMask:
             gas-plume footage where the region of interest is darker than its frame.
     """
 
+    # Both parameters are stored as attributes, but the mask is fitted once and
+    # cached — assigning them later would not refit it. The editor reads this to
+    # know it must rebuild the stage rather than poke the live instance.
+    RECONSTRUCT = ("threshold", "invert")
+
     def __init__(self, threshold: int = 127, invert: bool = True):
         self.threshold = threshold
         self.invert = invert

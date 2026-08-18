@@ -207,6 +207,20 @@ class Pipeline:
         with open(path, encoding="utf-8") as handle:
             return cls.from_config(yaml.safe_load(handle))
 
+    def apply(self, ctx: Ctx) -> None:
+        """Run every stage over one frame, filling ``ctx.taps`` as it goes.
+
+        What :meth:`run` does per frame, named so the GUI editor's preview worker
+        can drive one frame at a time without re-deriving what a frame goes
+        through.
+        """
+        for stage in self.stages:
+            stage.apply(ctx)
+            name = getattr(stage, "name", None)
+            if name is not None:
+                # No copy: stages rebind ctx.image rather than mutating it.
+                ctx.taps[name] = ctx.image
+
     def run(self, max_frames: int | None = None) -> int:
         """Process frames until the source ends, a sink stops, or ``max_frames``.
 
@@ -218,12 +232,7 @@ class Pipeline:
             if max_frames is not None and index >= max_frames:
                 break
             ctx = Ctx(image=frame, source=frame, index=index)
-            for stage in self.stages:
-                stage.apply(ctx)
-                name = getattr(stage, "name", None)
-                if name is not None:
-                    # No copy: stages rebind ctx.image rather than mutating it.
-                    ctx.taps[name] = ctx.image
+            self.apply(ctx)
             count += 1
             # List comprehension, not a generator: `all` short-circuits, which would
             # skip the video writer the moment a display window returned False.
