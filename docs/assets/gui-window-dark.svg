@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 628" width="940" height="628" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <title>The same editor at night — the ☀ in the corner of the menu bar switches</title>
+  <defs>
+    <linearGradient id="w-plume" x1="0" y1="1" x2="0.3" y2="0">
+      <stop offset="0%" stop-color="#12161c"/><stop offset="55%" stop-color="#3d4a5c"/><stop offset="100%" stop-color="#9fb3c8"/>
+    </linearGradient>
+  </defs>
+  <rect width="940" height="628" fill="#171e26"/>
+
+  <!-- window chrome -->
+  <rect x="20" y="20" width="900" height="500" rx="6" fill="#1f2933" stroke="#3e4c59"/>
+  <line x1="20" y1="52" x2="920" y2="52" stroke="#2b3743"/>
+  <g font-size="12" fill="#9fb3c8">
+    <text x="36" y="41">File</text><text x="76" y="41">Pipeline</text>
+  </g>
+  <text x="660" y="41" font-size="12" fill="#7b8794">segmentator — motion.yaml</text>
+  <text x="888" y="43" font-size="15" fill="#7b8794">☾</text>
+
+  <!-- stages + sinks -->
+  <g transform="translate(32 64)">
+    <text x="0" y="14" font-size="12" font-weight="600" fill="#cbd2d9">Stages</text>
+    <rect y="22" width="216" height="196" rx="5" fill="#1f2933" stroke="#3e4c59"/>
+    <g font-size="11">
+      <text x="12" y="42" fill="#9fb3c8">1.  gray</text>
+      <text x="12" y="62" fill="#9fb3c8">2.  gaussian_blur</text>
+      <text x="12" y="82" fill="#9fb3c8">3.  farneback</text>
+      <rect x="104" y="71" width="40" height="15" rx="7" fill="#3a2d10"/><text x="110" y="82" font-size="9" fill="#f7d774">flow</text>
+      <circle cx="158" cy="78" r="4" fill="#f0b429"/>
+      <text x="12" y="102" fill="#9fb3c8">4.  motion_heat</text>
+      <circle cx="158" cy="98" r="4" fill="#f0b429"/>
+      <rect x="6" y="108" width="204" height="20" rx="4" fill="#24344d" stroke="#6ea8fe"/>
+      <text x="12" y="122" fill="#e8eef5" font-weight="600">5.  threshold</text>
+      <text x="12" y="142" fill="#9fb3c8">6.  morphology</text>
+      <rect x="104" y="131" width="44" height="15" rx="7" fill="#3a2d10"/><text x="110" y="142" font-size="9" fill="#f7d774">mask</text>
+      <text x="12" y="162" fill="#9fb3c8">7.  motion_objects</text>
+      <circle cx="158" cy="158" r="4" fill="#f0b429"/>
+    </g>
+    <g font-size="11">
+      <rect x="0" y="226" width="28" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="11" y="240" fill="#cbd2d9">+</text>
+      <rect x="34" y="226" width="28" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="45" y="240" fill="#cbd2d9">−</text>
+    </g>
+
+    <text x="0" y="272" font-size="12" font-weight="600" fill="#cbd2d9">Sinks</text>
+    <rect y="280" width="216" height="112" rx="5" fill="#1f2933" stroke="#3e4c59"/>
+    <g font-size="11" fill="#4fd1a5">
+      <text x="12" y="300">ffmpeg  ← image</text>
+      <text x="12" y="320">ffmpeg  ← mask</text>
+      <text x="12" y="340">csv     ← rows</text>
+      <text x="12" y="360">json    ← metrics</text>
+    </g>
+    <g font-size="11">
+      <rect x="0" y="400" width="28" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="11" y="414" fill="#cbd2d9">+</text>
+      <rect x="34" y="400" width="28" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="45" y="414" fill="#cbd2d9">−</text>
+    </g>
+  </g>
+
+  <line x1="262" y1="64" x2="262" y2="490" stroke="#2b3743"/>
+
+  <!-- generated form -->
+  <g transform="translate(278 64)">
+    <text x="0" y="14" font-size="12" font-weight="600" fill="#e8eef5">threshold</text>
+    <text x="0" y="30" font-size="10" fill="#7b8794">generated from the signature</text>
+    <g font-size="11">
+      <text x="52" y="60" text-anchor="end" fill="#9fb3c8">value</text>
+      <rect x="60" y="47" width="120" height="19" rx="3" fill="#171e26" stroke="#3e4c59"/><text x="68" y="60" fill="#e8eef5">40</text>
+      <text x="52" y="88" text-anchor="end" fill="#9fb3c8">mode</text>
+      <rect x="60" y="75" width="120" height="19" rx="3" fill="#171e26" stroke="#3e4c59"/><text x="68" y="88" fill="#e8eef5">binary</text>
+      <text x="170" y="88" fill="#7b8794">▾</text>
+      <text x="52" y="116" text-anchor="end" fill="#9fb3c8">maxval</text>
+      <rect x="60" y="103" width="120" height="19" rx="3" fill="#171e26" stroke="#3e4c59"/><text x="68" y="116" fill="#e8eef5">255</text>
+      <text x="52" y="144" text-anchor="end" fill="#9fb3c8">otsu</text>
+      <rect x="60" y="133" width="13" height="13" rx="2" fill="#1f2933" stroke="#3e4c59"/>
+      <text x="52" y="176" text-anchor="end" fill="#9fb3c8">name (tap)</text>
+      <rect x="60" y="163" width="120" height="19" rx="3" fill="#171e26" stroke="#3e4c59"/><text x="68" y="176" fill="#616e7c">untapped</text>
+    </g>
+  </g>
+
+  <line x1="474" y1="64" x2="474" y2="490" stroke="#2b3743"/>
+
+  <!-- preview -->
+  <g transform="translate(486 64)">
+    <g font-size="10">
+      <rect width="112" height="20" rx="3" fill="#6ea8fe"/><text x="10" y="14" fill="#1f2933">selected: threshold</text>
+      <rect x="116" width="60" height="20" rx="3" fill="#2b3743"/><text x="130" y="14" fill="#9fb3c8">source</text>
+      <rect x="180" width="110" height="20" rx="3" fill="#2b3743"/><text x="190" y="14" fill="#9fb3c8">ffmpeg ← image</text>
+      <rect x="294" width="106" height="20" rx="3" fill="#2b3743"/><text x="304" y="14" fill="#9fb3c8">ffmpeg ← mask</text>
+    </g>
+    <rect y="28" width="418" height="212" fill="url(#w-plume)"/>
+    <g fill="#fff" opacity="0.92">
+      <rect x="196" y="120" width="26" height="52" rx="2"/><rect x="168" y="150" width="18" height="12" rx="2"/>
+      <rect x="238" y="146" width="10" height="20" rx="2"/><rect x="120" y="168" width="30" height="7" rx="2"/>
+    </g>
+    <rect x="188" y="112" width="44" height="66" fill="none" stroke="#f0b429" stroke-width="1.5"/>
+    <text x="188" y="106" font-size="9" fill="#f0b429">2904px 43.8/f</text>
+
+    <g font-size="11">
+      <rect y="250" width="418" height="98" rx="4" fill="#1f2933" stroke="#3e4c59"/>
+      <text x="12" y="268" fill="#7b8794">motion_px</text><text x="406" y="268" fill="#e8eef5" text-anchor="end">1652</text>
+      <text x="12" y="286" fill="#7b8794">motion_frac</text><text x="406" y="286" fill="#e8eef5" text-anchor="end">0.0215</text>
+      <text x="12" y="304" fill="#7b8794">motion_objects</text><text x="406" y="304" fill="#e8eef5" text-anchor="end">3</text>
+      <text x="12" y="322" fill="#7b8794">motion_speed</text><text x="406" y="322" fill="#e8eef5" text-anchor="end">43.8</text>
+      <text x="12" y="340" fill="#7b8794">motion rows</text><text x="406" y="340" fill="#e8eef5" text-anchor="end">3</text>
+    </g>
+
+    <g transform="translate(0 364)" font-size="11">
+      <rect width="32" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="9" y="14" fill="#cbd2d9">◀◀</text>
+      <rect x="38" width="32" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="50" y="14" fill="#cbd2d9">◀</text>
+      <rect x="76" width="32" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="88" y="14" fill="#cbd2d9">▶</text>
+      <rect x="114" width="32" height="20" rx="4" fill="#171e26" stroke="#3e4c59"/><text x="123" y="14" fill="#cbd2d9">▶▶</text>
+      <rect x="158" y="7" width="260" height="6" rx="3" fill="#2b3743"/>
+      <rect x="158" y="7" width="14" height="6" rx="3" fill="#6ea8fe"/>
+    </g>
+  </g>
+
+  <line x1="20" y1="490" x2="920" y2="490" stroke="#2b3743"/>
+  <text x="36" y="509" xml:space="preserve" font-size="11" fill="#7b8794" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">frame 1232/22875   320x240   97 ms   paused   reset: motion_objects</text>
+
+  <!-- legend -->
+  <g transform="translate(20 536)" font-size="11">
+    <circle cx="8" cy="8" r="4" fill="#f0b429"/>
+    <text x="20" y="12" fill="#9fb3c8">carries state between frames — the editor resets it rather than showing it a frame twice</text>
+    <rect x="520" y="1" width="40" height="15" rx="7" fill="#3a2d10" stroke="#f0b429"/><text x="526" y="12" font-size="9" fill="#f7d774">flow</text>
+    <text x="570" y="12" fill="#9fb3c8">a `name:` tap — what a sink's `input:` can point at</text>
+    <rect x="0" y="22" width="14" height="14" rx="3" fill="#3a2d10" stroke="#f0b429"/>
+    <text x="20" y="34" fill="#9fb3c8">an amber field is a construction parameter: changing it rebuilds the stage and restarts what it remembers</text>
+    <text x="20" y="56" fill="#9fb3c8">Every panel is generated: the list is the config's stage list, the form is the constructor's signature, the tabs are the sinks. Under the</text>
+    <text x="20" y="72" fill="#9fb3c8">frame is `ctx.metrics` — what the json sink would have written for it, and how many rows the csv sink would have written.</text>
+  </g>
+</svg>

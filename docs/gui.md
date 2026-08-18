@@ -21,11 +21,25 @@ in [Why a list and not a canvas](#why-a-list-and-not-a-canvas).
 ![The editor: stage list, generated form, preview](assets/gui-window.svg)
 
 That is not a sketch of the intended design — it is what the window renders. The
-editor forces its own palette and the Fusion style rather than inheriting the
-desktop theme, so it looks the same on every machine, and the same as this page.
-The two amber marks are the reason it is worth pinning down: a `name:` tap and a
-stage that carries state between frames are the two things you scan the list for
-while tuning, and a theme that recolours them is a theme that hides them.
+editor forces one of its own two palettes and the Fusion style rather than
+inheriting the desktop theme. The amber marks are the reason it is worth pinning
+down: a `name:` tap and a stage that carries state between frames are the two
+things you scan the list for while tuning, and a theme that recolours them is a
+theme that hides them.
+
+### Day and night
+
+The `☀` in the corner of the menu bar switches; the glyph is the theme you are
+in, so `☾` means night. The choice is remembered between sessions.
+
+![The same editor at night](assets/gui-window-dark.svg)
+
+Same layout, same meanings. Two roles do not simply invert, because a palette
+that flips every channel mechanically loses the things the light one was chosen
+for: the blue lightens, since `#1f6feb` on a dark panel reads as a hole rather
+than a highlight, and the amber pill becomes a dark tint behind the same amber
+border — a tap has to stay recognisably a tap. The video in the preview is never
+themed. It is the footage, not the furniture.
 
 ## The three panels
 
@@ -227,10 +241,11 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
 **"no frames in …".** The source path in the config is relative to where the
 editor was launched, exactly as it is for a batch run.
 
-**The window comes up in my desktop's dark theme.** It should not — `style.apply()`
-sets Fusion, a light `QPalette` and the stylesheet before the window is built. If
-you are constructing `MainWindow` yourself, call it first; that is all
-`segmentator-gui` does.
+**The window ignores my desktop theme.** By design — it has its own two, and the
+`☀` in the menu bar's corner picks between them. What the desktop is set to
+never enters into it. If you are constructing `MainWindow` yourself rather than
+running `segmentator-gui`, call `style.apply(app, theme)` before building it, or
+you get whatever the platform style hands you.
 
 **A stage raises while I am typing.** Expected, and not fatal — the status bar
 shows the exception and keeps the last good frame. `farneback` on a colour frame
@@ -241,7 +256,7 @@ is the usual one; it wants a `gray` above it.
 | | |
 |---|---|
 | [gui/spec.py](../segmentator/gui/spec.py) | signatures, the live-vs-rebuild rule, YAML round-trip. No Qt. |
-| [gui/style.py](../segmentator/gui/style.py) | the palette above, as a stylesheet and a `QPalette` |
+| [gui/style.py](../segmentator/gui/style.py) | both palettes, as a stylesheet and a `QPalette` |
 | [gui/worker.py](../segmentator/gui/worker.py) | the preview thread: prefix cache, the three rules, warm-up replay |
 | [gui/window.py](../segmentator/gui/window.py) | the window and every operation above |
 | [gui/main.py](../segmentator/gui/main.py) | entry point, and the Qt plugin fix |

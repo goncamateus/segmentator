@@ -1,24 +1,28 @@
-"""The look, in one place: the palette `docs/assets/gui-window.svg` draws.
+"""The look, in one place: the palettes `docs/assets/gui-window.svg` draws.
 
 The figure is the spec — a white window, `#f5f7fa` fields, `#cbd2d9` borders, a
 blue selection, and amber for the two things that matter while tuning: a `name:`
-tap, and a stage that remembers frames. The editor forces it rather than
-inheriting the desktop theme, so it looks the same on every machine and the same
-as the documentation.
+tap, and a stage that remembers frames. The editor forces one of its own two
+palettes rather than inheriting the desktop theme, so the marks that carry
+meaning keep the colour they are documented with.
 
 Two mechanisms, and both are needed:
 
 * the **stylesheet** styles what the window builds itself;
 * the **palette** covers what Qt builds for us — `QInputDialog`, `QFileDialog`,
   `QMessageBox`, tooltips — none of which the sheet's selectors reach, and all
-  of which come back dark on a dark desktop without it.
+  of which come back in the desktop theme without it.
+
+`PALETTE` is the *current* one, mutated in place by :func:`apply` rather than
+rebound, so anything holding a reference — `RowDelegate` paints straight out of
+it — follows a theme switch without being told.
 """
 
 from __future__ import annotations
 
 from PyQt6.QtGui import QColor, QPalette
 
-PALETTE = {
+LIGHT = {
     "panel": "#ffffff",  # the window itself, and the list/table panels on it
     "ground": "#f5f7fa",  # input fills and buttons
     "border": "#cbd2d9",
@@ -39,9 +43,40 @@ PALETTE = {
     "canvas": "#12161c",  # behind the preview frame
 }
 
+# Night. Same keys, same roles, and deliberately the greys the documentation's
+# code blocks already use. Two things do not simply invert: `accent` lightens,
+# because #1f6feb on a dark panel is a hole rather than a highlight, and
+# `amber_fill` becomes a dark tint that the amber border still reads against —
+# the amber marks have to stay recognisably the same marks.
+DARK = {
+    "panel": "#1f2933",
+    "ground": "#171e26",
+    "border": "#3e4c59",
+    "rule": "#2b3743",
+    "ink": "#e8eef5",
+    "head": "#cbd2d9",
+    "body": "#9fb3c8",
+    "muted": "#7b8794",
+    "faint": "#616e7c",
+    "accent": "#6ea8fe",
+    "accent_fill": "#24344d",
+    "accent_deep": "#2d4266",
+    "amber": "#f0b429",
+    "amber_fill": "#3a2d10",
+    "amber_ink": "#f0b429",
+    "amber_deep": "#f7d774",
+    "green": "#4fd1a5",
+    "canvas": "#0b0e12",
+}
+
+THEMES = {"light": LIGHT, "dark": DARK}
+
+# The live palette. Mutated, never rebound — see the module docstring.
+PALETTE = dict(LIGHT)
+
 MONO = "ui-monospace, SFMono-Regular, Menlo, DejaVu Sans Mono, monospace"
 
-SHEET = """
+TEMPLATE = """
 QMainWindow, QDialog, QWidget {{ background: {panel}; color: {head}; }}
 QLabel {{ background: transparent; color: {body}; }}
 QLabel#section {{ color: {head}; font-weight: 600; }}
@@ -136,6 +171,15 @@ QMenu {{ background: {panel}; border: 1px solid {border}; }}
 QMenu::item {{ padding: 4px 24px 4px 20px; }}
 QMenu::item:selected {{ background: {accent_fill}; color: {ink}; }}
 
+QToolButton#theme {{
+    background: transparent;
+    border: 0;
+    color: {muted};
+    font-size: 13pt;
+    padding: 0 10px 2px 10px;
+}}
+QToolButton#theme:hover {{ color: {amber}; }}
+
 QSplitter::handle {{ background: {rule}; }}
 QScrollArea {{ border: 0; }}
 QScrollBar:vertical, QScrollBar:horizontal {{ background: {panel}; border: 0; width: 10px; height: 10px; }}
@@ -143,12 +187,17 @@ QScrollBar::handle {{ background: {border}; border-radius: 5px; min-height: 24px
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
 QToolTip {{ background: {ink}; color: {panel}; border: 0; padding: 4px; }}
-""".format(mono=MONO, **PALETTE)
+"""
 
 
-def palette() -> QPalette:
-    """The light palette, for everything the stylesheet's selectors cannot reach."""
-    colours = {
+def sheet(colours: dict[str, str]) -> str:
+    """The stylesheet for one palette."""
+    return TEMPLATE.format(mono=MONO, **colours)
+
+
+def palette(colours: dict[str, str]) -> QPalette:
+    """A QPalette, for everything the stylesheet's selectors cannot reach."""
+    roles = {
         QPalette.ColorRole.Window: "panel",
         QPalette.ColorRole.WindowText: "head",
         QPalette.ColorRole.Base: "panel",
@@ -163,13 +212,22 @@ def palette() -> QPalette:
         QPalette.ColorRole.PlaceholderText: "faint",
     }
     built = QPalette()
-    for role, key in colours.items():
-        built.setColor(role, QColor(PALETTE[key]))
+    for role, key in roles.items():
+        built.setColor(role, QColor(colours[key]))
     return built
 
 
-def apply(app) -> None:
-    """Style one QApplication. Call it before the window is built."""
+def apply(app, theme: str = "light") -> None:
+    """Style one QApplication. Call it before the window is built.
+
+    Raises:
+        KeyError: on an unknown theme name, listing the known ones.
+    """
+    if theme not in THEMES:
+        raise KeyError(f"unknown theme {theme!r}; known: {sorted(THEMES)}")
+    colours = THEMES[theme]
+    PALETTE.clear()
+    PALETTE.update(colours)
     # Fusion rather than the platform style: a native style paints its own
     # backgrounds for some primitives and the sheet then only half applies.
     app.setStyle("Fusion")
@@ -179,5 +237,26 @@ def apply(app) -> None:
     font = app.font()
     font.setPointSize(9)
     app.setFont(font)
-    app.setPalette(palette())
-    app.setStyleSheet(SHEET)
+    app.setPalette(palette(colours))
+    app.setStyleSheet(sheet(colours))
+
+
+def label_style() -> str:
+    """The amber label of a construction parameter, in the current theme."""
+    return f"color: {PALETTE['amber_ink']}; font-weight: 600;"
+
+
+def _demo() -> None:
+    """Both themes must define exactly the same roles, or a switch leaves a hole."""
+    assert LIGHT.keys() == DARK.keys(), LIGHT.keys() ^ DARK.keys()
+    for name, colours in THEMES.items():
+        assert sheet(colours), name
+        assert all(value.startswith("#") for value in colours.values()), name
+        # Built, not merely formatted: a role naming a key that is not there
+        # raises here rather than three themes later.
+        assert palette(colours).color(QPalette.ColorRole.Window).isValid(), name
+    print("style ok")
+
+
+if __name__ == "__main__":
+    _demo()

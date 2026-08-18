@@ -28,8 +28,19 @@ from segmentator.gui.worker import WARMUP, PreviewWorker, preview_key, to_qimage
 
 
 @pytest.fixture(scope="session")
-def app():
+def app(tmp_path_factory):
+    from PyQt6.QtCore import QSettings
+
     from segmentator.gui import style
+
+    # The window remembers its theme in QSettings; a test run must not rewrite
+    # the theme the person running it left the editor in. Both formats, because
+    # the default on Unix is NativeFormat and redirecting IniFormat alone still
+    # writes to the real ~/.config.
+    root = str(tmp_path_factory.mktemp("settings"))
+    for fmt in (QSettings.Format.IniFormat, QSettings.Format.NativeFormat):
+        QSettings.setPath(fmt, QSettings.Scope.UserScope, root)
+    QSettings.setDefaultFormat(QSettings.Format.IniFormat)
 
     made = QApplication.instance() or QApplication([])
     style.apply(made)  # the styled path is the only path; test what ships
@@ -333,6 +344,40 @@ def test_a_row_carries_its_decorations_as_data_not_as_glyphs(window):
         "stateful": False,
     }
     assert "⟨" not in window.stage_list.item(2).text()
+
+
+def test_the_two_themes_define_the_same_roles(app):
+    from segmentator.gui import style
+
+    style._demo()
+
+
+def test_toggling_the_theme_repaints_what_was_already_drawn(app, window):
+    from segmentator.gui.style import DARK, LIGHT, PALETTE
+
+    window.set_theme("light")  # explicit: the theme is remembered between runs
+    window.on_measured(7, {"motion_px": 12}, {})
+    assert window.theme_button.text() == "☀"
+    assert window.metrics.item(0, 1).foreground().color().name() == LIGHT["ink"]
+
+    window.toggle_theme()
+
+    assert window.theme == "dark"
+    assert window.theme_button.text() == "☾"
+    assert PALETTE["panel"] == DARK["panel"], "the live palette the delegate paints from"
+    assert window.metrics.item(0, 1).foreground().color().name() == DARK["ink"], (
+        "cells written before the switch have to be repainted, not left behind"
+    )
+
+    window.toggle_theme()
+    assert window.theme == "light" and PALETTE["ink"] == LIGHT["ink"]
+
+
+def test_an_unknown_theme_says_what_it_knows(app):
+    from segmentator.gui import style
+
+    with pytest.raises(KeyError, match="dracula"):
+        style.apply(app, "dracula")
 
 
 def test_a_construction_parameter_tints_its_field(window):

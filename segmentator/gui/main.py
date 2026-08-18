@@ -22,13 +22,16 @@ def main() -> int:
     parser.add_argument("config", type=Path, nargs="?", help="pipeline YAML to open")
     args = parser.parse_args()
 
+    from PyQt6.QtCore import QSettings
     from PyQt6.QtWidgets import QApplication, QFileDialog
 
     from segmentator.gui import style
     from segmentator.gui.window import MainWindow
 
     app = QApplication(sys.argv)
-    style.apply(app)
+    # The theme the window was last left in. The window writes it back on every
+    # toggle; a first run has no key and gets the light one.
+    style.apply(app, str(QSettings("segmentator", "gui").value("theme", "light")))
     path = args.config
     if path is None:
         chosen, _ = QFileDialog.getOpenFileName(None, "Open config", "configs", "YAML (*.yaml *.yml)")

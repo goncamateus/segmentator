@@ -21,7 +21,7 @@ import inspect
 from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import QRectF, QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QRectF, QSettings, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import (
     QAction,
     QColor,
@@ -34,6 +34,7 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
@@ -57,17 +58,18 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QTabBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from segmentator.gui import spec as spec_module
+from segmentator.gui import style
 from segmentator.gui.spec import CHOICES, STATEFUL, Param, params, rebuild_params
-from segmentator.gui.style import PALETTE
+from segmentator.gui.style import PALETTE, label_style
 from segmentator.gui.worker import PreviewWorker, preview_key
 from segmentator.pipeline import registered
 
-REBUILD_STYLE = f"color: {PALETTE['amber_ink']}; font-weight: 600;"
 SINK_IMAGE_TYPES = ("display", "ffmpeg", "image", "crops")
 ROW_HEIGHT = 22
 
@@ -208,7 +210,7 @@ class ParamForm(QWidget):
             widget = self._widget(type_name, param, spec.get(param.name, param.default))
             label = QLabel(param.name)
             if param.name in forced:
-                label.setStyleSheet(REBUILD_STYLE)
+                label.setStyleSheet(label_style())
                 # The stylesheet tints the field to match the label, so the row
                 # reads as one warning rather than two.
                 widget.setProperty("rebuild", True)
@@ -307,6 +309,8 @@ class MainWindow(QMainWindow):
         self.worker: PreviewWorker | None = None
         self._images: dict[str, QPixmap] = {}
         self._current = "source"
+        self._measured: tuple[int, dict, dict] = (0, {}, {})
+        self.theme = str(QSettings("segmentator", "gui").value("theme", "light"))
 
         self.setWindowTitle(f"segmentator — {self.path.name}")
         self.resize(1280, 760)
@@ -321,6 +325,7 @@ class MainWindow(QMainWindow):
             splitter.setStretchFactor(index, stretch)
         self.setCentralWidget(splitter)
         self._menus()
+        self._theme_button()
         self.statusBar().showMessage("ready")
 
         self.reload_lists()
@@ -451,6 +456,39 @@ class MainWindow(QMainWindow):
         edit.addSeparator()
         action(edit, "Move &up", lambda: self.shift(-1), "Ctrl+Up")
         action(edit, "Move &down", lambda: self.shift(1), "Ctrl+Down")
+
+    def _theme_button(self) -> None:
+        """Day/night, in the corner of the menu bar."""
+        self.theme_button = QToolButton()
+        self.theme_button.setAutoRaise(True)
+        self.theme_button.setObjectName("theme")
+        self.theme_button.clicked.connect(self.toggle_theme)
+        self.menuBar().setCornerWidget(self.theme_button, Qt.Corner.TopRightCorner)
+        self._show_theme()
+
+    def _show_theme(self) -> None:
+        """The glyph is the theme you are in, not the one you would get."""
+        night = self.theme == "dark"
+        self.theme_button.setText("☾" if night else "☀")
+        self.theme_button.setToolTip(f"{'night' if night else 'day'} — click for the other")
+
+    def toggle_theme(self) -> None:
+        self.set_theme("light" if self.theme == "dark" else "dark")
+
+    def set_theme(self, theme: str) -> None:
+        """Restyle everything, including what was painted before the switch."""
+        self.theme = theme
+        style.apply(QApplication.instance(), theme)
+        QSettings("segmentator", "gui").setValue("theme", theme)
+        self._show_theme()
+        # Three things hold a colour of their own rather than reading the sheet:
+        # the delegate paints from the live palette and only needs a repaint, the
+        # form's amber labels carry an inline style, and the metrics cells were
+        # given an explicit foreground when they were last written.
+        for widget in (self.stage_list, self.sink_list):
+            widget.viewport().update()
+        self.form.show_spec(self.form.kind, self.form.spec)
+        self.on_measured(*self._measured)
 
     # --- the document ------------------------------------------------------- #
 
@@ -686,7 +724,8 @@ class MainWindow(QMainWindow):
             )
         )
 
-    def on_measured(self, _index: int, metrics: dict, rows: dict) -> None:
+    def on_measured(self, index: int, metrics: dict, rows: dict) -> None:
+        self._measured = (index, metrics, rows)
         entries = list(metrics.items()) + [(f"{kind} rows", len(r)) for kind, r in rows.items()]
         self.metrics.setRowCount(len(entries))
         for row, (key, value) in enumerate(entries):
