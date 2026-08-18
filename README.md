@@ -1,4 +1,8 @@
-# segmentator
+# Segmentator
+
+<p align="center">
+    <img src="docs/assets/gui-window.svg" alt="The editor: stage list, generated form, preview">
+</p>
 
 Configuration-driven image and video segmentation. A pipeline is described in
 YAML, so trying a different preprocessing chain, detector or background model is
