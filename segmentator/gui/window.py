@@ -21,8 +21,17 @@ import inspect
 from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QGuiApplication, QKeySequence, QPixmap
+from PyQt6.QtCore import QRectF, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import (
+    QAction,
+    QColor,
+    QFont,
+    QFontMetrics,
+    QGuiApplication,
+    QKeySequence,
+    QPainter,
+    QPixmap,
+)
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -43,6 +52,8 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSpinBox,
     QSplitter,
+    QStyle,
+    QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
     QTabBar,
@@ -52,11 +63,86 @@ from PyQt6.QtWidgets import (
 
 from segmentator.gui import spec as spec_module
 from segmentator.gui.spec import CHOICES, STATEFUL, Param, params, rebuild_params
+from segmentator.gui.style import PALETTE
 from segmentator.gui.worker import PreviewWorker, preview_key
 from segmentator.pipeline import registered
 
-REBUILD_STYLE = "color: #b44d12; font-weight: 600;"
+REBUILD_STYLE = f"color: {PALETTE['amber_ink']}; font-weight: 600;"
 SINK_IMAGE_TYPES = ("display", "ffmpeg", "image", "crops")
+ROW_HEIGHT = 22
+
+
+class RowDelegate(QStyledItemDelegate):
+    """Paints one stage or sink row the way `docs/assets/gui-window.svg` draws it.
+
+    The decorations are shapes rather than characters — a rounded pill for a
+    `name:` tap, an amber dot for a stage that carries state between frames —
+    because both are things you scan the list for while tuning, and `⟨flow⟩ ●`
+    in the middle of a label is not something you can scan.
+    """
+
+    def paint(self, painter: QPainter, option, index) -> None:
+        entry = index.data(Qt.ItemDataRole.UserRole) or {}
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rect = option.rect.adjusted(3, 1, -3, -1)
+
+        selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        if selected:
+            painter.setPen(QColor(PALETTE["accent"]))
+            painter.setBrush(QColor(PALETTE["accent_fill"]))
+            painter.drawRoundedRect(QRectF(rect), 4, 4)
+        elif option.state & QStyle.StateFlag.State_MouseOver:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(PALETTE["ground"]))
+            painter.drawRoundedRect(QRectF(rect), 4, 4)
+
+        font = QFont(option.font)
+        font.setBold(selected)
+        painter.setFont(font)
+        if selected:
+            colour = PALETTE["ink"]
+        elif entry.get("kind") == "sink":
+            colour = PALETTE["green"]
+        else:
+            colour = PALETTE["body"]
+        text_rect = rect.adjusted(9, 0, -9, 0)
+        metrics = QFontMetrics(font)
+        name = entry.get("name")
+
+        # Reserve the decorations first and elide the label into what is left:
+        # a narrow list must drop characters off the type name, never paint a
+        # pill on top of it.
+        pill_width = metrics.horizontalAdvance(name) + 14 if name else 0
+        reserved = (18 if entry.get("stateful") else 0) + (pill_width + 10 if name else 0)
+        painter.setPen(QColor(colour))
+        text = index.data(Qt.ItemDataRole.DisplayRole) or ""
+        painter.drawText(
+            text_rect,
+            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+            metrics.elidedText(
+                text, Qt.TextElideMode.ElideRight, max(0, text_rect.width() - reserved)
+            ),
+        )
+
+        right = text_rect.right()
+        if entry.get("stateful"):
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(PALETTE["amber"]))
+            painter.drawEllipse(QRectF(right - 8, rect.center().y() - 3.5, 7, 7))
+            right -= 18
+
+        if name:
+            pill = QRectF(right - pill_width, rect.center().y() - 8, pill_width, 16)
+            painter.setPen(QColor(PALETTE["amber"]))
+            painter.setBrush(QColor(PALETTE["amber_fill"]))
+            painter.drawRoundedRect(pill, 8, 8)
+            painter.setPen(QColor(PALETTE["amber_deep"]))
+            painter.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), name)
+        painter.restore()
+
+    def sizeHint(self, option, index) -> QSize:  # noqa: N802 - Qt name
+        return QSize(super().sizeHint(option, index).width(), ROW_HEIGHT)
 
 
 def move(seq: Any, src: int, dst: int) -> None:
@@ -123,10 +209,14 @@ class ParamForm(QWidget):
             label = QLabel(param.name)
             if param.name in forced:
                 label.setStyleSheet(REBUILD_STYLE)
-                label.setToolTip(
+                # The stylesheet tints the field to match the label, so the row
+                # reads as one warning rather than two.
+                widget.setProperty("rebuild", True)
+                widget.setToolTip(
                     "Construction parameter: changing it rebuilds the stage, and a "
                     "stage that remembers frames starts over."
                 )
+                label.setToolTip(widget.toolTip())
             self._layout.addRow(label, widget)
 
         if kind == "stage":
@@ -224,7 +314,11 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self._lists())
         splitter.addWidget(self._form())
         splitter.addWidget(self._preview())
-        splitter.setSizes([260, 260, 760])
+        splitter.setSizes([240, 250, 450])
+        # Only the preview grows: the list and the form have a width their
+        # contents need, and stealing it to widen a frame helps nobody.
+        for index, stretch in enumerate((0, 0, 1)):
+            splitter.setStretchFactor(index, stretch)
         self.setCentralWidget(splitter)
         self._menus()
         self.statusBar().showMessage("ready")
@@ -237,30 +331,40 @@ class MainWindow(QMainWindow):
 
     def _lists(self) -> QWidget:
         panel = QWidget()
+        panel.setMinimumWidth(200)
         layout = QVBoxLayout(panel)
 
-        layout.addWidget(QLabel("<b>Stages</b>"))
+        layout.addWidget(self._section("Stages"))
         self.stage_list = QListWidget()
+        self.stage_list.setItemDelegate(RowDelegate(self))
         self.stage_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.stage_list.currentRowChanged.connect(self.on_stage_selected)
         self.stage_list.model().rowsMoved.connect(self.on_rows_moved)
         layout.addWidget(self.stage_list, 3)
         layout.addLayout(self._buttons("stage"))
 
-        layout.addWidget(QLabel("<b>Sinks</b>"))
+        layout.addWidget(self._section("Sinks"))
         self.sink_list = QListWidget()
+        self.sink_list.setItemDelegate(RowDelegate(self))
         self.sink_list.currentRowChanged.connect(self.on_sink_selected)
         layout.addWidget(self.sink_list, 2)
         layout.addLayout(self._buttons("sink"))
         return panel
 
+    def _section(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("section")
+        return label
+
     def _buttons(self, kind: str) -> QHBoxLayout:
         row = QHBoxLayout()
         add = QPushButton("+")
         add.setToolTip(f"add a {kind}")
+        add.setFixedSize(30, 22)
         add.clicked.connect(lambda: self.add(kind))
         remove = QPushButton("−")
         remove.setToolTip(f"remove the selected {kind}")
+        remove.setFixedSize(30, 22)
         remove.clicked.connect(lambda: self.remove(kind))
         row.addWidget(add)
         row.addWidget(remove)
@@ -273,25 +377,34 @@ class MainWindow(QMainWindow):
         area = QScrollArea()
         area.setWidgetResizable(True)
         area.setWidget(self.form)
+        area.setMinimumWidth(250)
         return area
 
     def _preview(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout(panel)
         self.tabs = QTabBar()
+        self.tabs.setDrawBase(False)
+        self.tabs.setExpanding(False)
+        # Elide rather than grow scroll arrows: the tab strip is a set of things
+        # to look at, and one you cannot see is worse than one that is shortened.
+        self.tabs.setUsesScrollButtons(False)
+        self.tabs.setElideMode(Qt.TextElideMode.ElideRight)
         self.tabs.currentChanged.connect(self.on_tab_changed)
         layout.addWidget(self.tabs)
 
         self.view = QLabel("no frame yet")
+        self.view.setObjectName("preview")
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.view.setMinimumSize(360, 240)
-        self.view.setStyleSheet("background: #12161c; color: #7b8794;")
         layout.addWidget(self.view, 3)
 
         self.metrics = QTableWidget(0, 2)
         self.metrics.horizontalHeader().setVisible(False)
         self.metrics.verticalHeader().setVisible(False)
         self.metrics.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.metrics.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.metrics.setShowGrid(False)
         self.metrics.setMaximumHeight(150)
         layout.addWidget(self.metrics, 1)
 
@@ -304,7 +417,7 @@ class MainWindow(QMainWindow):
         ):
             button = QPushButton(text)
             button.setToolTip(tip)
-            button.setFixedWidth(44)
+            button.setFixedSize(36, 22)
             button.clicked.connect(slot)
             transport.addWidget(button)
             if text == "▶":
@@ -358,21 +471,29 @@ class MainWindow(QMainWindow):
             widget.blockSignals(True)
             widget.clear()
             for position, entry in enumerate(self.specs(kind)):
-                widget.addItem(QListWidgetItem(self._label(kind, position, entry)))
+                item = QListWidgetItem(self._label(kind, position, entry))
+                item.setData(Qt.ItemDataRole.UserRole, self._marks(kind, entry))
+                widget.addItem(item)
             widget.setCurrentRow(min(row, widget.count() - 1))
             widget.blockSignals(False)
         self.reload_tabs()
 
     def _label(self, kind: str, position: int, entry: dict[str, Any]) -> str:
+        """The row's text. The tap and the state dot are drawn, not written."""
         type_name = entry.get("type", "?")
         if kind == "sink":
             return f"{type_name}  ← {entry.get('input', self._sink_default(type_name))}"
-        marks = ""
-        if entry.get("name"):
-            marks += f"   ⟨{entry['name']}⟩"
-        if type_name in STATEFUL:
-            marks += "  ●"
-        return f"{position + 1}. {type_name}{marks}"
+        return f"{position + 1}.  {type_name}"
+
+    def _marks(self, kind: str, entry: dict[str, Any]) -> dict[str, Any]:
+        """What :class:`RowDelegate` paints beside the label."""
+        type_name = entry.get("type", "?")
+        return {
+            "kind": kind,
+            "type": type_name,
+            "name": entry.get("name") if kind == "stage" else None,
+            "stateful": kind == "stage" and type_name in STATEFUL,
+        }
 
     def _sink_default(self, type_name: str) -> str:
         if type_name == "csv":
@@ -392,7 +513,7 @@ class MainWindow(QMainWindow):
         at = widget.currentRow() + 1 if widget.currentRow() >= 0 else len(self.specs(kind))
         self.specs(kind).insert(at, spec_module.new_spec(kind, name))
         self.reload_lists()
-        widget.setCurrentRow(at)
+        self.select(kind, at)
         self.push()
 
     def remove(self, kind: str) -> None:
@@ -402,11 +523,23 @@ class MainWindow(QMainWindow):
             return
         del self.specs(kind)[row]
         self.reload_lists()
+        self.select(kind, min(row, len(self.specs(kind)) - 1))
         self.push()
 
     def remove_current(self) -> None:
         """Remove from whichever list has the focus. The menu item cannot see one."""
         self.remove("sink" if self.sink_list.hasFocus() else "stage")
+
+    def select(self, kind: str, row: int) -> None:
+        """Select a row and make the form follow it.
+
+        Via -1 on purpose: `reload_lists` restores the old index with signals
+        blocked, so selecting the same number again emits nothing and would leave
+        the form describing the stage that used to be there.
+        """
+        widget = self.stage_list if kind == "stage" else self.sink_list
+        widget.setCurrentRow(-1)
+        widget.setCurrentRow(row)
 
     def shift(self, delta: int) -> None:
         row = self.stage_list.currentRow()
@@ -415,7 +548,7 @@ class MainWindow(QMainWindow):
             return
         move(self.specs("stage"), row, target)
         self.reload_lists()
-        self.stage_list.setCurrentRow(target)
+        self.select("stage", target)
         self.push()
 
     def on_rows_moved(self, _parent, start: int, _end: int, _dest, row: int) -> None:
@@ -557,9 +690,17 @@ class MainWindow(QMainWindow):
         entries = list(metrics.items()) + [(f"{kind} rows", len(r)) for kind, r in rows.items()]
         self.metrics.setRowCount(len(entries))
         for row, (key, value) in enumerate(entries):
-            self.metrics.setItem(row, 0, QTableWidgetItem(str(key)))
-            self.metrics.setItem(row, 1, QTableWidgetItem(str(value)))
+            name = QTableWidgetItem(str(key))
+            name.setForeground(QColor(PALETTE["muted"]))
+            number = QTableWidgetItem(str(value))
+            number.setForeground(QColor(PALETTE["ink"]))
+            number.setTextAlignment(
+                int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            )
+            self.metrics.setItem(row, 0, name)
+            self.metrics.setItem(row, 1, number)
         self.metrics.resizeColumnsToContents()
+        self.metrics.horizontalHeader().setStretchLastSection(True)
 
     def on_position(self, index: int, count: int) -> None:
         self.slider.setMaximum(max(0, count - 1))

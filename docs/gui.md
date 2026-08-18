@@ -20,6 +20,13 @@ in [Why a list and not a canvas](#why-a-list-and-not-a-canvas).
 
 ![The editor: stage list, generated form, preview](assets/gui-window.svg)
 
+That is not a sketch of the intended design — it is what the window renders. The
+editor forces its own palette and the Fusion style rather than inheriting the
+desktop theme, so it looks the same on every machine, and the same as this page.
+The two amber marks are the reason it is worth pinning down: a `name:` tap and a
+stage that carries state between frames are the two things you scan the list for
+while tuning, and a theme that recolours them is a theme that hides them.
+
 ## The three panels
 
 **Left — the pipeline.** The stages in the order they run, then the sinks. An
@@ -220,6 +227,11 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
 **"no frames in …".** The source path in the config is relative to where the
 editor was launched, exactly as it is for a batch run.
 
+**The window comes up in my desktop's dark theme.** It should not — `style.apply()`
+sets Fusion, a light `QPalette` and the stylesheet before the window is built. If
+you are constructing `MainWindow` yourself, call it first; that is all
+`segmentator-gui` does.
+
 **A stage raises while I am typing.** Expected, and not fatal — the status bar
 shows the exception and keeps the last good frame. `farneback` on a colour frame
 is the usual one; it wants a `gray` above it.
@@ -229,6 +241,7 @@ is the usual one; it wants a `gray` above it.
 | | |
 |---|---|
 | [gui/spec.py](../segmentator/gui/spec.py) | signatures, the live-vs-rebuild rule, YAML round-trip. No Qt. |
+| [gui/style.py](../segmentator/gui/style.py) | the palette above, as a stylesheet and a `QPalette` |
 | [gui/worker.py](../segmentator/gui/worker.py) | the preview thread: prefix cache, the three rules, warm-up replay |
 | [gui/window.py](../segmentator/gui/window.py) | the window and every operation above |
 | [gui/main.py](../segmentator/gui/main.py) | entry point, and the Qt plugin fix |

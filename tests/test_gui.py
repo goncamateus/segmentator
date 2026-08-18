@@ -29,7 +29,11 @@ from segmentator.gui.worker import WARMUP, PreviewWorker, preview_key, to_qimage
 
 @pytest.fixture(scope="session")
 def app():
-    return QApplication.instance() or QApplication([])
+    from segmentator.gui import style
+
+    made = QApplication.instance() or QApplication([])
+    style.apply(made)  # the styled path is the only path; test what ships
+    return made
 
 
 @pytest.fixture
@@ -301,12 +305,56 @@ def window(app, project):
     made.close()
 
 
+def marks(item):
+    from PyQt6.QtCore import Qt
+
+    return item.data(Qt.ItemDataRole.UserRole)
+
+
 def test_the_window_lists_what_the_config_holds(window):
     assert window.stage_list.count() == 3
     assert window.sink_list.count() == 1
-    assert "farneback" in window.stage_list.item(1).text()
-    assert "⟨mask⟩" in window.stage_list.item(2).text()
-    assert "ffmpeg  ← mask" == window.sink_list.item(0).text()
+    assert window.stage_list.item(1).text() == "2.  farneback"
+    assert window.sink_list.item(0).text() == "ffmpeg  ← mask"
+
+
+def test_a_row_carries_its_decorations_as_data_not_as_glyphs(window):
+    """The tap pill and the state dot are painted by RowDelegate, not typed."""
+    assert marks(window.stage_list.item(1)) == {
+        "kind": "stage",
+        "type": "farneback",
+        "name": None,
+        "stateful": True,
+    }
+    assert marks(window.stage_list.item(2)) == {
+        "kind": "stage",
+        "type": "threshold",
+        "name": "mask",
+        "stateful": False,
+    }
+    assert "⟨" not in window.stage_list.item(2).text()
+
+
+def test_a_construction_parameter_tints_its_field(window):
+    """The amber row in the figure: label and field carry the same warning."""
+    window.stage_list.setCurrentRow(1)  # farneback — every knob is live
+    fields = [
+        window.form._layout.itemAt(row, window.form._layout.ItemRole.FieldRole)
+        for row in range(window.form._layout.rowCount())
+    ]
+    live = [f.widget() for f in fields if f is not None]
+    assert not any(widget.property("rebuild") for widget in live)
+
+    window.specs("stage").insert(1, spec_module.new_spec("stage", "mog2"))
+    window.reload_lists()
+    window.select("stage", 1)
+    tinted = [
+        window.form._layout.itemAt(row, window.form._layout.ItemRole.LabelRole).widget().text()
+        for row in range(window.form._layout.rowCount())
+        if (item := window.form._layout.itemAt(row, window.form._layout.ItemRole.FieldRole))
+        and item.widget().property("rebuild")
+    ]
+    assert tinted == ["history", "var_threshold", "detect_shadows"]
 
 
 def test_selecting_a_stage_generates_its_form(window):

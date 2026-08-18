@@ -24,9 +24,11 @@ def main() -> int:
 
     from PyQt6.QtWidgets import QApplication, QFileDialog
 
+    from segmentator.gui import style
     from segmentator.gui.window import MainWindow
 
     app = QApplication(sys.argv)
+    style.apply(app)
     path = args.config
     if path is None:
         chosen, _ = QFileDialog.getOpenFileName(None, "Open config", "configs", "YAML (*.yaml *.yml)")

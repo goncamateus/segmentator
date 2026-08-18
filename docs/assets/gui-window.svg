@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 592" width="940" height="592" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 628" width="940" height="628" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
   <title>The editor: stage list, generated form, preview — and what each part is for</title>
   <defs>
     <linearGradient id="w-plume" x1="0" y1="1" x2="0.3" y2="0">
       <stop offset="0%" stop-color="#12161c"/><stop offset="55%" stop-color="#3d4a5c"/><stop offset="100%" stop-color="#9fb3c8"/>
     </linearGradient>
   </defs>
-  <rect width="940" height="592" fill="#f5f7fa"/>
+  <rect width="940" height="628" fill="#f5f7fa"/>
 
   <!-- window chrome -->
   <rect x="20" y="20" width="900" height="500" rx="6" fill="#fff" stroke="#cbd2d9"/>
@@ -72,12 +72,6 @@
       <text x="52" y="176" text-anchor="end" fill="#52606d">name (tap)</text>
       <rect x="60" y="163" width="120" height="19" rx="3" fill="#f5f7fa" stroke="#cbd2d9"/><text x="68" y="176" fill="#9aa5b1">untapped</text>
     </g>
-    <rect y="208" width="180" height="88" rx="5" fill="#fdf3d8"/>
-    <text x="10" y="228" font-size="10" font-weight="600" fill="#b44d12">an amber label</text>
-    <text x="10" y="244" font-size="10" fill="#5c3d00">marks a construction</text>
-    <text x="10" y="258" font-size="10" fill="#5c3d00">parameter: changing it</text>
-    <text x="10" y="272" font-size="10" fill="#5c3d00">rebuilds the stage and</text>
-    <text x="10" y="286" font-size="10" fill="#5c3d00">restarts what it remembers.</text>
   </g>
 
   <line x1="474" y1="64" x2="474" y2="490" stroke="#e4e7eb"/>
@@ -99,17 +93,13 @@
     <text x="188" y="106" font-size="9" fill="#f0b429">2904px 43.8/f</text>
 
     <g font-size="11">
-      <rect y="250" width="240" height="98" rx="4" fill="#fff" stroke="#cbd2d9"/>
-      <text x="10" y="268" fill="#7b8794">motion_px</text><text x="228" y="268" fill="#1f2933" text-anchor="end">1652</text>
-      <text x="10" y="286" fill="#7b8794">motion_frac</text><text x="228" y="286" fill="#1f2933" text-anchor="end">0.0215</text>
-      <text x="10" y="304" fill="#7b8794">motion_objects</text><text x="228" y="304" fill="#1f2933" text-anchor="end">3</text>
-      <text x="10" y="322" fill="#7b8794">motion_speed</text><text x="228" y="322" fill="#1f2933" text-anchor="end">43.8</text>
-      <text x="10" y="340" fill="#7b8794">motion rows</text><text x="228" y="340" fill="#1f2933" text-anchor="end">3</text>
+      <rect y="250" width="418" height="98" rx="4" fill="#fff" stroke="#cbd2d9"/>
+      <text x="12" y="268" fill="#7b8794">motion_px</text><text x="406" y="268" fill="#1f2933" text-anchor="end">1652</text>
+      <text x="12" y="286" fill="#7b8794">motion_frac</text><text x="406" y="286" fill="#1f2933" text-anchor="end">0.0215</text>
+      <text x="12" y="304" fill="#7b8794">motion_objects</text><text x="406" y="304" fill="#1f2933" text-anchor="end">3</text>
+      <text x="12" y="322" fill="#7b8794">motion_speed</text><text x="406" y="322" fill="#1f2933" text-anchor="end">43.8</text>
+      <text x="12" y="340" fill="#7b8794">motion rows</text><text x="406" y="340" fill="#1f2933" text-anchor="end">3</text>
     </g>
-    <text x="252" y="268" font-size="10" fill="#7b8794">ctx.metrics, the frame the</text>
-    <text x="252" y="282" font-size="10" fill="#7b8794">json sink would have written;</text>
-    <text x="252" y="296" font-size="10" fill="#7b8794">row counts are what the csv</text>
-    <text x="252" y="310" font-size="10" fill="#7b8794">sink would have written.</text>
 
     <g transform="translate(0 364)" font-size="11">
       <rect width="32" height="20" rx="4" fill="#f5f7fa" stroke="#cbd2d9"/><text x="9" y="14" fill="#3e4c59">◀◀</text>
@@ -128,8 +118,11 @@
   <g transform="translate(20 536)" font-size="11">
     <circle cx="8" cy="8" r="4" fill="#f0b429"/>
     <text x="20" y="12" fill="#52606d">carries state between frames — the editor resets it rather than showing it a frame twice</text>
-    <rect x="520" y="1" width="40" height="15" rx="7" fill="#fdf3d8"/><text x="526" y="12" font-size="9" fill="#5c3d00">flow</text>
+    <rect x="520" y="1" width="40" height="15" rx="7" fill="#fdf3d8" stroke="#f0b429"/><text x="526" y="12" font-size="9" fill="#5c3d00">flow</text>
     <text x="570" y="12" fill="#52606d">a `name:` tap — what a sink's `input:` can point at</text>
-    <text x="20" y="34" fill="#52606d">Every panel is generated: the list is the config's stage list, the form is the constructor's signature, the tabs are the sinks.</text>
+    <rect x="0" y="22" width="14" height="14" rx="3" fill="#fdf3d8" stroke="#f0b429"/>
+    <text x="20" y="34" fill="#52606d">an amber field is a construction parameter: changing it rebuilds the stage and restarts what it remembers</text>
+    <text x="20" y="56" fill="#52606d">Every panel is generated: the list is the config's stage list, the form is the constructor's signature, the tabs are the sinks. Under the</text>
+    <text x="20" y="72" fill="#52606d">frame is `ctx.metrics` — what the json sink would have written for it, and how many rows the csv sink would have written.</text>
   </g>
 </svg>
