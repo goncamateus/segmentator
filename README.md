@@ -23,6 +23,7 @@ class Ctx:
     source: np.ndarray  # original BGR frame, untouched
     index: int
     store: dict         # side channel within one frame
+    taps: dict          # named stages' outputs, for sinks to pick from
 
 class Stage(Protocol):
     def apply(self, ctx: Ctx) -> None: ...
@@ -49,6 +50,36 @@ is taken (these videos are large enough that per-frame copies are pure waste).
 Components register themselves by name (`@register("stage", "median_blur")`), and
 `build()` turns a `{type: ..., **params}` mapping into an instance. An unknown name
 raises with the list of known ones.
+
+## Choosing what a sink outputs
+
+Give a stage a `name:` to tap its output, then point a sink at it with `input:`:
+
+```yaml
+stages:
+  - {type: gray}
+  - {type: median_blur, ksize: 7, name: smoothed}
+  - {type: static_mask, threshold: 127}
+  - {type: mean_background, n_frames: 60}
+  - {type: apply_mask, name: masked}
+
+sinks:
+  - {type: ffmpeg, path: outputs/result.mp4}                 # default: the final image
+  - {type: display, input: source}                           # untouched footage
+  - {type: display, input: smoothed}                         # mid-chain
+  - {type: display, input: mask}                             # the ROI mask artifact
+```
+
+`input:` resolves in this order — `image` (the chain's final output, the default),
+`source`, a named stage's tap, then any image-valued entry in `ctx.store`. Anything else
+raises, listing what is available. Display sinks title their window after `input` unless
+given a `window:`, so several of them coexist instead of fighting over one window.
+
+Taps are opt-in: an unnamed stage costs nothing, and a duplicated `name:` is rejected.
+
+> **Gotcha:** a tap holds `ctx.image` *after* the stage ran. `static_mask` publishes a mask
+> but leaves the frame alone, so `name:` on it taps its input image — reach the mask itself
+> with `input: mask`.
 
 | File | Contents |
 |---|---|

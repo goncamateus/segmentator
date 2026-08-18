@@ -12,7 +12,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from core.pipeline import Ctx, register
+from core.pipeline import Ctx, frame_for, register
 from core.video_writer import FfmpegWriter
 
 
@@ -51,7 +51,10 @@ class DisplaySink:
     """Show frames in an OpenCV window; returns ``False`` when the quit key is hit.
 
     Args:
-        window: Window title.
+        input: Which image to show — ``image`` (the chain's output), ``source``, or a
+            named stage. See :func:`~core.pipeline.frame_for`.
+        window: Window title. Defaults to ``input``, so several display sinks in one
+            config open separate windows instead of overwriting each other.
         size: Optional ``[width, height]`` to scale the preview to.
         delay: ``cv2.waitKey`` delay in ms.
         quit_key: Key that stops the run.
@@ -59,18 +62,20 @@ class DisplaySink:
 
     def __init__(
         self,
-        window: str = "Segmented",
+        input: str = "image",
+        window: str | None = None,
         size: tuple[int, int] | None = None,
         delay: int = 1,
         quit_key: str = "q",
     ):
-        self.window = window
+        self.input = input
+        self.window = window if window is not None else input
         self.size = None if size is None else (int(size[0]), int(size[1]))
         self.delay = delay
         self.quit_key = quit_key
 
     def write(self, ctx: Ctx) -> bool:
-        frame = ctx.image
+        frame = frame_for(ctx, self.input)
         if self.size is not None:
             frame = cv2.resize(frame, self.size)
         cv2.imshow(self.window, frame)
@@ -90,11 +95,14 @@ class FfmpegSink:
 
     Args:
         path: Output file. Parent directories are created.
+        input: Which image to encode — ``image`` (the chain's output), ``source``, or a
+            named stage. See :func:`~core.pipeline.frame_for`.
         fps: Frame rate. Defaults to the source's rate when the pipeline binds one.
     """
 
-    def __init__(self, path: str | Path, fps: float | None = None):
+    def __init__(self, path: str | Path, input: str = "image", fps: float | None = None):
         self.path = Path(path)
+        self.input = input
         self.fps = fps
         self._writer: FfmpegWriter | None = None
 
@@ -104,7 +112,7 @@ class FfmpegSink:
             self.fps = float(getattr(source, "fps", 30.0))
 
     def write(self, ctx: Ctx) -> bool:
-        frame = ctx.image
+        frame = frame_for(ctx, self.input)
         if frame.ndim == 2:
             frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
         if self._writer is None:

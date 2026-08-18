@@ -29,6 +29,10 @@ class Ctx:
             consumes within the same frame (e.g. ``store["mask"]``). Discarded
             after the frame; state that must survive across frames belongs on
             the stage instance.
+        taps: Snapshots of ``image`` taken after each *named* stage, so a sink can
+            output a mid-chain frame. Filled by the pipeline runner, never by a
+            stage — keeping it apart from ``store`` means a stage named ``mask``
+            cannot shadow the ``store["mask"]`` artifact.
 
     Note:
         ``image`` and ``source`` alias the same buffer when the frame enters the
@@ -41,6 +45,34 @@ class Ctx:
     source: np.ndarray
     index: int = 0
     store: dict[str, Any] = field(default_factory=dict)
+    taps: dict[str, np.ndarray] = field(default_factory=dict)
+
+
+def frame_for(ctx: Ctx, key: str = "image") -> np.ndarray:
+    """Resolve a sink's ``input`` to an array.
+
+    Order: ``image`` (the chain's final output), ``source`` (the untouched frame),
+    a named stage's tap, then any image-valued entry in ``ctx.store``. That last
+    fallback is what makes ``input: mask`` work — ``static_mask`` publishes a mask
+    but leaves ``ctx.image`` alone, so naming that stage taps its *input* image
+    rather than the mask it produced.
+
+    Raises:
+        KeyError: If nothing under ``key`` is an image, listing what is available.
+    """
+    if key == "image":
+        return ctx.image
+    if key == "source":
+        return ctx.source
+    if key in ctx.taps:
+        return ctx.taps[key]
+    artifact = ctx.store.get(key)
+    if isinstance(artifact, np.ndarray):
+        return artifact
+    available = ["image", "source", *sorted(ctx.taps)]
+    available += sorted(k for k, v in ctx.store.items() if isinstance(v, np.ndarray))
+    detail = " (not an image)" if key in ctx.store else ""
+    raise KeyError(f"no image named {key!r}{detail}; available: {available}")
 
 
 @runtime_checkable
@@ -108,6 +140,29 @@ def registered(kind: str) -> list[str]:
     return sorted(_REGISTRY[kind])
 
 
+def _build_stages(specs: Sequence[Mapping[str, Any]]) -> list[Stage]:
+    """Build the stage chain, moving each spec's optional ``name`` onto the instance.
+
+    ``name`` is stripped here rather than in :func:`build` so stage constructors
+    never have to accept it and ``build`` stays a plain ``{type, **kwargs}`` mapping.
+    """
+    stages: list[Stage] = []
+    seen: dict[str, int] = {}
+    for position, spec in enumerate(specs):
+        params = dict(spec)
+        name = params.pop("name", None)
+        stage = build("stage", params)
+        if name is not None:
+            if name in seen:
+                raise ValueError(
+                    f"duplicate stage name {name!r} at positions {seen[name]} and {position}"
+                )
+            seen[name] = position
+            stage.name = name
+        stages.append(stage)
+    return stages
+
+
 # --------------------------------------------------------------------------- #
 # Pipeline
 # --------------------------------------------------------------------------- #
@@ -130,7 +185,7 @@ class Pipeline:
         from core import io, stages  # noqa: F401
 
         source = build("source", cfg["source"])
-        built_stages = [build("stage", s) for s in cfg.get("stages", [])]
+        built_stages = _build_stages(cfg.get("stages", []))
         built_sinks = [build("sink", s) for s in cfg.get("sinks", [])]
         for sink in built_sinks:
             bind = getattr(sink, "bind_source", None)
@@ -157,6 +212,10 @@ class Pipeline:
             ctx = Ctx(image=frame, source=frame, index=index)
             for stage in self.stages:
                 stage.apply(ctx)
+                name = getattr(stage, "name", None)
+                if name is not None:
+                    # No copy: stages rebind ctx.image rather than mutating it.
+                    ctx.taps[name] = ctx.image
             count += 1
             # List comprehension, not a generator: `all` short-circuits, which would
             # skip the video writer the moment a display window returned False.

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import yaml
 
-from core.pipeline import Ctx, Pipeline, build, register
+from core.pipeline import Ctx, Pipeline, build, frame_for, register
 from core.stages import MeanBackground, StaticMask, Threshold
 
 
@@ -33,13 +33,14 @@ class ArraySource:
 class RecordingSink:
     """Records every frame it sees; optionally stops the run at frame `stop_at`."""
 
-    def __init__(self, stop_at=None):
+    def __init__(self, stop_at=None, input="image"):
         self.seen = []
         self.stop_at = stop_at
+        self.input = input
         self.closed = False
 
     def write(self, ctx):
-        self.seen.append(ctx.image.copy())
+        self.seen.append(frame_for(ctx, self.input).copy())
         return self.stop_at is None or ctx.index < self.stop_at
 
     def close(self):
@@ -167,3 +168,95 @@ def test_max_frames_caps_the_run(frames):
     with Pipeline(ArraySource(frames), [], [sink]) as pipeline:
         assert pipeline.run(max_frames=4) == 4
     assert len(sink.seen) == 4
+
+
+# --------------------------------------------------------------------------- #
+# Named stages and sink input selection
+# --------------------------------------------------------------------------- #
+
+TAPPED_CONFIG = """
+source: {type: _test_array, count: 1}
+stages:
+  - {type: _test_tag, label: first, name: early}
+  - {type: _test_tag, label: second}
+sinks: []
+"""
+
+
+def _run_with_sinks(config_yaml, sinks):
+    pipeline = Pipeline.from_config(yaml.safe_load(config_yaml))
+    pipeline.sinks = list(sinks)
+    pipeline.run()
+    return sinks
+
+
+def test_named_stage_is_tapped_with_its_own_output():
+    """A tap holds what the named stage produced, not what later stages did to it."""
+    early, final = RecordingSink(input="early"), RecordingSink()
+    _run_with_sinks(TAPPED_CONFIG, [early, final])
+    assert early.seen[0].max() == 1, "one increment had run when 'early' was tapped"
+    assert final.seen[0].max() == 2, "the default input is still the chain's last image"
+
+
+def test_unnamed_stages_are_not_tapped():
+    sink = RecordingSink()
+    pipeline = Pipeline.from_config(yaml.safe_load(TAPPED_CONFIG))
+    pipeline.sinks = [sink]
+    pipeline.run()
+    ctx = Ctx(image=np.zeros((4, 4), np.uint8), source=np.zeros((4, 4), np.uint8))
+    for stage in pipeline.stages:
+        stage.apply(ctx)
+        name = getattr(stage, "name", None)
+        if name is not None:
+            ctx.taps[name] = ctx.image
+    assert sorted(ctx.taps) == ["early"]
+
+
+def test_source_input_survives_later_stages():
+    """`input: source` is the untouched frame even after the chain rewrote ctx.image."""
+    sink = RecordingSink(input="source")
+    _run_with_sinks(TAPPED_CONFIG, [sink])
+    assert sink.seen[0].max() == 0, "source must not carry the stages' increments"
+
+
+def test_duplicate_stage_names_are_rejected():
+    config = yaml.safe_load(
+        """
+        source: {type: _test_array, count: 1}
+        stages:
+          - {type: _test_tag, label: a, name: same}
+          - {type: _test_tag, label: b, name: same}
+        sinks: []
+        """
+    )
+    with pytest.raises(ValueError, match="duplicate stage name 'same'"):
+        Pipeline.from_config(config)
+
+
+def test_name_is_not_passed_to_the_stage_constructor():
+    """Stage classes never see `name`; the pipeline strips it before building."""
+    pipeline = Pipeline.from_config(yaml.safe_load(TAPPED_CONFIG))
+    assert pipeline.stages[0].name == "early"
+    assert pipeline.stages[0].label == "first", "the real params still reached the class"
+
+
+def test_frame_for_falls_back_to_image_artifacts():
+    """`input: mask` reaches the artifact static_mask publishes, which is not a tap."""
+    dark = np.zeros((4, 4), np.uint8)
+    ctx = Ctx(image=dark, source=dark)
+    StaticMask(threshold=127, invert=True).apply(ctx)
+    assert frame_for(ctx, "mask") is ctx.store["mask"]
+
+
+def test_frame_for_rejects_unknown_and_non_image_names():
+    frame = np.zeros((4, 4), np.uint8)
+    ctx = Ctx(image=frame, source=frame)
+    ctx.taps["early"] = frame
+    ctx.store["contours"] = [1, 2, 3]
+
+    with pytest.raises(KeyError, match="no image named 'nope'") as excinfo:
+        frame_for(ctx, "nope")
+    assert "early" in str(excinfo.value), "the error should list the available names"
+
+    with pytest.raises(KeyError, match="not an image"):
+        frame_for(ctx, "contours")
