@@ -515,6 +515,55 @@ def test_a_stateful_stage_carries_its_amber_dot_into_the_dialog(app, window):
             assert marks(item)["stateful"] == (item.text() in STATEFUL)
 
 
+def test_each_family_wears_its_catalogue_accent(app, window):
+    """The four colour groups `docs/assets/stage-families.svg` draws."""
+    from segmentator.gui.style import FAMILY_ACCENT, PALETTE
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    for card, (title, _) in zip(dialog._cards, spec_module.FAMILIES):
+        accent = PALETTE[FAMILY_ACCENT[title]]
+        assert accent in card.styleSheet(), title
+        heading = card.layout().itemAt(0).widget()
+        assert accent in heading.styleSheet(), title
+
+    # Not all one colour: the grouping is the point.
+    assert len({FAMILY_ACCENT[title] for title, _ in spec_module.FAMILIES}) == 4
+
+
+def test_the_card_carries_the_border_so_its_list_does_not(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    sheet = dialog._cards[0].styleSheet()
+    assert "QFrame#card QListWidget { border: 0" in sheet
+
+
+def test_stage_names_are_monospace(app, window):
+    """They are `type:` values to be typed into a config, not prose."""
+    from PyQt6.QtGui import QFontInfo
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    assert QFontInfo(dialog._lists[0].font()).fixedPitch()
+
+
+def test_the_dot_is_explained(app, window):
+    from segmentator.gui.window import AddDialog
+
+    from PyQt6.QtWidgets import QLabel
+
+    stages = AddDialog(window, "stage")
+    legends = [
+        w for w in stages.findChildren(QLabel) if "carries state" in w.text()
+    ]
+    assert len(legends) == 1
+
+    # Sinks carry no state and get no dots, so the legend would explain nothing.
+    sinks = AddDialog(window, "sink")
+    assert not [w for w in sinks.findChildren(QLabel) if "carries state" in w.text()]
+
+
 def test_every_section_header_is_pinned_to_the_same_height(app, window):
     """Otherwise a QGridLayout equalises a row to its tallest card and the
     heading — the one child in a card not already held to a fixed size — is

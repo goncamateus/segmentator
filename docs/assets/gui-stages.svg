@@ -20,28 +20,33 @@
     <text x="20" y="39" font-size="9" fill="#9aa5b1">filter stages…</text>
 
     <g font-size="9">
-      <!-- card 1 -->
-      <text x="14" y="58" font-weight="600" fill="#3e4c59">Blur / morphology</text>
-      <rect x="14" y="62" width="120" height="60" rx="4" fill="#fff" stroke="#cbd2d9"/>
-      <text x="20" y="76" fill="#52606d">median_blur</text>
-      <rect x="17" y="82" width="114" height="14" rx="3" fill="#e3f0ff" stroke="#1f6feb"/>
-      <text x="20" y="92" font-weight="600" fill="#1f2933">gaussian_blur</text>
-      <text x="20" y="112" fill="#52606d">morphology</text>
+      <!-- card 1: the blue group -->
+      <rect x="14" y="54" width="120" height="72" rx="5" fill="#fff" stroke="#cbd2d9"/>
+      <rect x="14" y="54" width="120" height="3" rx="1.5" fill="#1f6feb"/>
+      <text x="20" y="70" font-weight="600" fill="#1f6feb">Blur / morphology</text>
+      <text x="20" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">median_blur</text>
+      <rect x="17" y="90" width="114" height="14" rx="3" fill="#e3f0ff" stroke="#1f6feb"/>
+      <text x="20" y="100" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="600" fill="#1f2933">gaussian_blur</text>
+      <text x="20" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">clahe</text>
 
-      <!-- card 2 -->
-      <text x="146" y="58" font-weight="600" fill="#3e4c59">Motion — models</text>
-      <rect x="146" y="62" width="120" height="60" rx="4" fill="#fff" stroke="#cbd2d9"/>
-      <text x="152" y="76" fill="#52606d">mog2</text>
-      <circle cx="258" cy="72.5" r="3.5" fill="#f0b429"/>
-      <text x="152" y="92" fill="#52606d">knn</text>
-      <circle cx="258" cy="88.5" r="3.5" fill="#f0b429"/>
-      <text x="152" y="108" fill="#52606d">frame_diff</text>
-      <circle cx="258" cy="104.5" r="3.5" fill="#f0b429"/>
+      <!-- card 2: the motion group -->
+      <rect x="146" y="54" width="120" height="72" rx="5" fill="#fff" stroke="#cbd2d9"/>
+      <rect x="146" y="54" width="120" height="3" rx="1.5" fill="#b44d12"/>
+      <text x="152" y="70" font-weight="600" fill="#b44d12">Motion — models</text>
+      <text x="152" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">mog2</text>
+      <circle cx="258" cy="82.5" r="3.5" fill="#f0b429"/>
+      <text x="152" y="102" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">knn</text>
+      <circle cx="258" cy="98.5" r="3.5" fill="#f0b429"/>
+      <text x="152" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">frame_diff</text>
+      <circle cx="258" cy="114.5" r="3.5" fill="#f0b429"/>
     </g>
 
-    <text x="14" y="140" font-size="9" fill="#7b8794">12 families, same grouping as `docs/stages.md` —</text>
-    <text x="14" y="152" font-size="9" fill="#7b8794">a grid, not a 41-row combo. The dot is `STATEFUL`,</text>
-    <text x="14" y="164" font-size="9" fill="#7b8794">reused from the main list's own row painter.</text>
+    <g font-size="9">
+      <circle cx="18" cy="140" r="3.5" fill="#f0b429"/>
+      <text x="28" y="143" fill="#7b8794">carries state between frames</text>
+    </g>
+    <text x="14" y="160" font-size="9" fill="#7b8794">12 families in the catalogue's own four colour groups,</text>
+    <text x="14" y="171" font-size="9" fill="#7b8794">capped at three rows each — a grid, not a 41-row combo.</text>
   </g>
   <text x="24" y="238" font-size="11" fill="#52606d">The new stage lands <tspan font-style="italic">after</tspan> the selected one, with only</text>
   <text x="24" y="254" font-size="11" fill="#52606d">its required parameters written out. Everything else is</text>

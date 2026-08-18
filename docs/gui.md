@@ -81,9 +81,16 @@ family cards (the same twelve `docs/stages.md` groups into: Adjust, Blur /
 morphology, Motion — models, and so on) rather than one long combo. Every name
 in it is `registered("stage")` or `registered("sink")` — 41 stages, 3 sources, 6
 sinks, listed because they registered themselves, not because anyone typed them
-here. A stage that carries state between frames shows the same amber dot the
-main list marks it with; a filter box above the cards narrows every card at
-once, since a grid is still a lot to scan by eye for one specific name. Clicking
+here. Each card wears its family's colour from the
+[catalogue](stages.md) — blue to prepare a frame, purple to find features in it,
+green to mask it, orange to measure what moved — and lists its stages in the
+same monospace the catalogue sets them in, since they are `type:` values to be
+typed into a config rather than prose. A stage that carries state between frames
+shows the same amber dot the main list marks it with, explained by a legend
+under the cards; a card with more than three stages scrolls rather than growing,
+so every card is the same size whatever is filed under it. A filter box above
+them narrows every card at once, since a grid is still a lot to scan by eye for
+one specific name. Clicking
 a row selects it — across cards, only one row is ever selected — and a
 double-click accepts immediately. The new stage is inserted after the selected
 one and written out with only its *required* parameters; everything else is a

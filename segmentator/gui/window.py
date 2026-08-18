@@ -26,6 +26,7 @@ from PyQt6.QtGui import (
     QAction,
     QColor,
     QFont,
+    QFontDatabase,
     QFontMetrics,
     QGuiApplication,
     QKeySequence,
@@ -223,6 +224,18 @@ class AddDialog(QDialog):
             self._lists.append(listw)
             self._cards.append(card)
 
+        footer = QHBoxLayout()
+        if kind == "stage":
+            # The same legend the catalogue figure carries, for the same reason:
+            # the amber dot is the one mark in here that means something, and
+            # nothing else on the dialog says what.
+            legend = QLabel(
+                f"<span style='color:{PALETTE['amber']}'>&#9679;</span>"
+                f" <span style='color:{PALETTE['muted']}'>carries state between frames</span>"
+            )
+            footer.addWidget(legend)
+        footer.addStretch(1)
+
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
@@ -230,7 +243,8 @@ class AddDialog(QDialog):
         self.ok_button.setEnabled(False)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer.addWidget(buttons)
+        layout.addLayout(footer)
 
         self.resize(640, 520)
         self.filter.setFocus()
@@ -239,10 +253,18 @@ class AddDialog(QDialog):
     def _card(self, title: str, members: tuple[str, ...]) -> tuple[QWidget, QListWidget]:
         card = QFrame()
         card.setObjectName("card")
+        # White panel, 1px border, and a coloured bar across the top edge — the
+        # catalogue figure's card, so the palette and `docs/stages.md` group the
+        # families into the same four colours.
+        card.setStyleSheet(style.card_sheet(title))
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(2, 2, 2, 2)
+        # Tight: a mono `brightness_contrast` needs every pixel of a card that
+        # is one quarter of 640 wide, and the delegate reserves its own padding
+        # inside this again.
+        card_layout.setContentsMargins(4, 4, 4, 4)
         heading = QLabel(title)
         heading.setObjectName("section")
+        heading.setStyleSheet(style.family_heading_style(title))
         # Fixed, not left to its sizeHint: a QGridLayout equalises every cell in
         # a row to the tallest one, and a heading is the one child in a card
         # that isn't already held to a fixed height — left free, it is what
@@ -254,6 +276,16 @@ class AddDialog(QDialog):
         listw = QListWidget()
         listw.setItemDelegate(RowDelegate(listw))
         listw.setFrameShape(QFrame.Shape.NoFrame)
+        # Monospace, as the catalogue sets them: these are `type:` values to be
+        # typed into a config, not prose, and the figure already reads them that
+        # way. Sized off the app font so it tracks the 9pt the rest of the
+        # editor uses rather than whatever the platform's fixed font defaults to.
+        mono = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        # A point under the headings, which is the proportion the figure draws
+        # them at — and monospace is wide enough that the point buys back most
+        # of a name like `brightness_contrast`.
+        mono.setPointSize(max(7, self.font().pointSize() - 1))
+        listw.setFont(mono)
         # Horizontal stays off regardless of row count: the base
         # sizeHint().width() this delegate inherits reflects the un-elided
         # text, wider than the card, even though the delegate elides at paint

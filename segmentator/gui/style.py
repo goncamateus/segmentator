@@ -40,6 +40,7 @@ LIGHT = {
     "amber_ink": "#b44d12",
     "amber_deep": "#5c3d00",
     "green": "#1f8a70",
+    "violet": "#5b21b6",
     "canvas": "#12161c",  # behind the preview frame
 }
 
@@ -66,10 +67,30 @@ DARK = {
     "amber_ink": "#f0b429",
     "amber_deep": "#f7d774",
     "green": "#4fd1a5",
+    "violet": "#a78bfa",  # #5b21b6 is a hole on a dark panel; this is its night twin
     "canvas": "#0b0e12",
 }
 
 THEMES = {"light": LIGHT, "dark": DARK}
+
+# Which accent each stage family wears in the Add dialog, as a palette key so it
+# resolves in whichever theme is current. The four groups — and their colours —
+# are `docs/assets/stage-families.svg`'s: what you reach for to prepare a frame,
+# to find features in it, to mask it, and to measure what moved.
+FAMILY_ACCENT = {
+    "Adjust": "accent",
+    "Blur / morphology": "accent",
+    "Threshold": "accent",
+    "Region of interest": "accent",
+    "Edges": "violet",
+    "Geometry": "violet",
+    "Keypoints": "violet",
+    "Texture / colour": "violet",
+    "Masking": "green",
+    "Motion — models": "amber_ink",
+    "Motion — flow": "amber_ink",
+    "Motion — after": "amber_ink",
+}
 
 # The live palette. Mutated, never rebound — see the module docstring.
 PALETTE = dict(LIGHT)
@@ -246,6 +267,36 @@ def label_style() -> str:
     return f"color: {PALETTE['amber_ink']}; font-weight: 600;"
 
 
+def card_sheet(family: str) -> str:
+    """One Add-dialog family card, styled the way the catalogue figure draws it.
+
+    A white panel with a coloured bar across its top edge. The bar is a
+    `border-top`, not a widget of its own: it then sits flush inside the card's
+    rounded corners for free, and there is nothing extra in the layout to keep
+    aligned with everything else.
+
+    Written inline on the card rather than into the global sheet because the
+    colour is per-family. Resolving `PALETTE` here — at construction — is safe
+    only because the dialog is modal and short-lived: the theme cannot change
+    underneath one, and each `add()` builds a fresh dialog.
+    """
+    accent = PALETTE[FAMILY_ACCENT.get(family, "accent")]
+    return (
+        f"QFrame#card {{ background: {PALETTE['panel']};"
+        f" border: 1px solid {PALETTE['border']};"
+        f" border-top: 3px solid {accent};"
+        f" border-radius: 6px; }}"
+        # The card carries the border now, so the list inside it must not draw a
+        # second one within a couple of pixels of the first.
+        f"QFrame#card QListWidget {{ border: 0; background: transparent; }}"
+    )
+
+
+def family_heading_style(family: str) -> str:
+    """A family heading, coloured to match its card's accent bar."""
+    return f"color: {PALETTE[FAMILY_ACCENT.get(family, 'accent')]}; font-weight: 600;"
+
+
 def _demo() -> None:
     """Both themes must define exactly the same roles, or a switch leaves a hole."""
     assert LIGHT.keys() == DARK.keys(), LIGHT.keys() ^ DARK.keys()
@@ -255,6 +306,18 @@ def _demo() -> None:
         # Built, not merely formatted: a role naming a key that is not there
         # raises here rather than three themes later.
         assert palette(colours).color(QPalette.ColorRole.Window).isValid(), name
+
+    # Every family has an accent, and every accent names a role both themes
+    # carry — a family added to FAMILIES without one would otherwise silently
+    # fall back to blue and sit in the wrong colour group.
+    from segmentator.gui.spec import FAMILIES
+
+    families = {name for name, _ in FAMILIES}
+    assert set(FAMILY_ACCENT) == families, set(FAMILY_ACCENT) ^ families
+    assert set(FAMILY_ACCENT.values()) <= LIGHT.keys(), set(FAMILY_ACCENT.values()) - LIGHT.keys()
+    for family in families:
+        assert card_sheet(family) and family_heading_style(family), family
+
     print("style ok")
 
 
