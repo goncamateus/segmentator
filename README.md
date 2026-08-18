@@ -94,5 +94,5 @@ with Pipeline(
 ## Tests
 
 ```bash
-uv run python test_pipeline.py   # also runs under pytest
+uv run pytest
 ```
