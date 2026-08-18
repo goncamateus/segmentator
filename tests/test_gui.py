@@ -464,3 +464,189 @@ def test_the_preview_tabs_are_the_selection_the_source_and_every_image_sink(wind
 def test_the_run_command_is_offered_rather_than_run(window, project):
     window.copy_command()
     assert QApplication.clipboard().text() == f"uv run segmentator {project}"
+
+
+# --------------------------------------------------------------------------- #
+# AddDialog: the sectioned palette that replaced the one-combo picker
+# --------------------------------------------------------------------------- #
+
+
+def test_the_dialog_is_half_the_main_windows_default_width(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    assert dialog.width() == 640  # half of MainWindow's resize(1280, 760)
+
+
+def test_every_family_is_a_card_and_covers_every_stage(app, window):
+    # spec._demo() is what checks FAMILIES against the live registry (and does
+    # so past registrations a shared test run can leave behind); this test only
+    # has to check that the dialog renders FAMILIES faithfully.
+    from segmentator.gui.spec import FAMILIES
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    assert len(dialog._cards) == len(FAMILIES)
+    shown = {
+        dialog._lists[i].item(row).text()
+        for i, (_, members) in enumerate(FAMILIES)
+        for row in range(len(members))
+    }
+    expected = {name for _, members in FAMILIES for name in members}
+    assert shown == expected
+
+
+def test_sinks_get_one_unsectioned_card(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "sink")
+    assert len(dialog._cards) == 1
+    assert dialog._lists[0].count() == len(registered("sink"))
+
+
+def test_a_stateful_stage_carries_its_amber_dot_into_the_dialog(app, window):
+    from segmentator.gui.spec import STATEFUL
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    for listw in dialog._lists:
+        for row in range(listw.count()):
+            item = listw.item(row)
+            assert marks(item)["stateful"] == (item.text() in STATEFUL)
+
+
+def test_every_section_header_is_pinned_to_the_same_height(app, window):
+    """Otherwise a QGridLayout equalises a row to its tallest card and the
+    heading — the one child in a card not already held to a fixed size — is
+    what stretches to fill the difference."""
+    from segmentator.gui.window import ROW_HEIGHT, AddDialog
+
+    dialog = AddDialog(window, "stage")
+    heading_heights = {card.layout().itemAt(0).widget().height() for card in dialog._cards}
+    assert heading_heights == {ROW_HEIGHT}
+
+
+def test_a_card_never_grows_past_three_rows(app, window):
+    from segmentator.gui.window import CARD_ROWS, ROW_HEIGHT, AddDialog
+
+    dialog = AddDialog(window, "stage")
+    for listw in dialog._lists:
+        expected = min(listw.count(), CARD_ROWS) * ROW_HEIGHT + 4
+        assert listw.height() == expected
+
+
+def test_a_family_over_the_cap_scrolls_instead_of_hiding_rows(app, window):
+    """The rest of a >3-member family is reachable, not simply cut off."""
+    from segmentator.gui.spec import FAMILIES
+    from segmentator.gui.window import CARD_ROWS, AddDialog
+
+    dialog = AddDialog(window, "stage")
+    index = next(i for i, (_, members) in enumerate(FAMILIES) if len(members) > CARD_ROWS)
+    listw = dialog._lists[index]
+    assert listw.verticalScrollBar().maximum() > 0
+    assert not any(listw.isRowHidden(row) for row in range(listw.count()))
+
+
+def test_a_family_at_or_under_the_cap_does_not_scroll(app, window):
+    from segmentator.gui.spec import FAMILIES
+    from segmentator.gui.window import CARD_ROWS, AddDialog
+
+    dialog = AddDialog(window, "stage")
+    index = next(i for i, (_, members) in enumerate(FAMILIES) if len(members) <= CARD_ROWS)
+    assert dialog._lists[index].verticalScrollBar().maximum() == 0
+
+
+def test_selecting_one_row_clears_every_other_cards_selection(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    first, second = dialog._lists[0], dialog._lists[1]
+    first.setCurrentRow(0)
+    dialog._choose(first, first.item(0).text())
+
+    second.setCurrentRow(0)
+    dialog._choose(second, second.item(0).text())
+
+    assert first.currentRow() == -1
+    assert dialog.chosen == second.item(0).text()
+    assert dialog.ok_button.isEnabled()
+
+
+def test_the_ok_button_starts_disabled_until_something_is_chosen(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    assert not dialog.ok_button.isEnabled()
+
+
+def test_double_clicking_a_row_accepts_immediately(app, window):
+    from PyQt6.QtWidgets import QDialog
+
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    dialog._accept_choice("canny")
+    assert dialog.chosen == "canny"
+    assert dialog.result() == QDialog.DialogCode.Accepted
+
+
+def test_the_filter_narrows_rows_and_hides_empty_cards(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    dialog.filter.setText("farneback")
+
+    # isVisible() reflects on-screen visibility and this dialog is never shown,
+    # so isHidden() is the one that reads the explicit setVisible() call made by
+    # _apply_filter.
+    visible_cards = [card for card in dialog._cards if not card.isHidden()]
+    assert len(visible_cards) == 1
+    visible_rows = [
+        listw.item(row).text()
+        for listw in dialog._lists
+        for row in range(listw.count())
+        if not listw.isRowHidden(row)
+    ]
+    assert visible_rows == ["farneback"]
+
+
+def test_clearing_the_filter_shows_every_card_again(app, window):
+    from segmentator.gui.window import AddDialog
+
+    dialog = AddDialog(window, "stage")
+    dialog.filter.setText("farneback")
+    dialog.filter.setText("")
+
+    assert all(not card.isHidden() for card in dialog._cards)
+    assert all(
+        not listw.isRowHidden(row)
+        for listw in dialog._lists
+        for row in range(listw.count())
+    )
+
+
+def test_add_opens_the_dialog_and_inserts_after_the_selection(monkeypatch, window):
+    from segmentator.gui.window import AddDialog
+
+    monkeypatch.setattr(AddDialog, "get_type", staticmethod(lambda parent, kind: "median_blur"))
+    window.stage_list.setCurrentRow(0)
+
+    window.add("stage")
+
+    assert [entry["type"] for entry in window.cfg["stages"]] == [
+        "gray",
+        "median_blur",
+        "farneback",
+        "threshold",
+    ]
+
+
+def test_add_does_nothing_on_cancel(monkeypatch, window):
+    from segmentator.gui.window import AddDialog
+
+    monkeypatch.setattr(AddDialog, "get_type", staticmethod(lambda parent, kind: None))
+    before = [dict(entry) for entry in window.cfg["stages"]]
+
+    window.add("stage")
+
+    assert list(window.cfg["stages"]) == before

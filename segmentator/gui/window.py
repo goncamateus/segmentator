@@ -37,11 +37,14 @@ from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -65,13 +68,19 @@ from PyQt6.QtWidgets import (
 
 from segmentator.gui import spec as spec_module
 from segmentator.gui import style
-from segmentator.gui.spec import CHOICES, STATEFUL, Param, params, rebuild_params
+from segmentator.gui.spec import CHOICES, FAMILIES, STATEFUL, Param, params, rebuild_params
 from segmentator.gui.style import PALETTE, label_style
 from segmentator.gui.worker import PreviewWorker, preview_key
 from segmentator.pipeline import registered
 
 SINK_IMAGE_TYPES = ("display", "ffmpeg", "image", "crops")
 ROW_HEIGHT = 22
+# Rows shown in one AddDialog family card before it scrolls instead of growing.
+# A fixed cap, not "tallest card in this grid row": a 7-member family sitting
+# next to a 2-member one would otherwise dictate the whole row's height, and
+# every card is meant to look like the same kind of thing regardless of how
+# many stages happen to be filed under it.
+CARD_ROWS = 3
 
 
 class RowDelegate(QStyledItemDelegate):
@@ -145,6 +154,205 @@ class RowDelegate(QStyledItemDelegate):
 
     def sizeHint(self, option, index) -> QSize:  # noqa: N802 - Qt name
         return QSize(super().sizeHint(option, index).width(), ROW_HEIGHT)
+
+
+class AddDialog(QDialog):
+    """The stage/sink palette: sectioned cards instead of one long combo.
+
+    ``QInputDialog.getItem`` used to hold this — one combo box with all 41
+    stage names in registration order, whose dropdown was a single column
+    that ran off the bottom of the screen. Wide instead of tall fixes that
+    directly: laid out as a grid of family cards (`FAMILIES`, the same
+    grouping `docs/stages.md` and `docs/assets/stage-families.svg` use), 41
+    names fit in three short rows of cards rather than one 41-row list.
+
+    Each family gets its own small `QListWidget` — rather than one list with
+    non-selectable header rows — because `RowDelegate` already knows how to
+    paint a stateful stage's amber dot, and reusing it here means the dialog
+    and the main lists agree on what that dot means without a second
+    painter. Selecting a row in one card clears the others, so the dialog
+    still behaves like a single choice.
+    """
+
+    def __init__(self, parent: QWidget, kind: str) -> None:
+        super().__init__(parent)
+        self.kind = kind
+        self.chosen: str | None = None
+        self.setWindowTitle(f"Add {kind}")
+        # Half the main window's default width (1280), which is what turns
+        # "one tall column" into "a few short rows of cards".
+        self.setFixedWidth(640)
+
+        layout = QVBoxLayout(self)
+        self.filter = QLineEdit()
+        self.filter.setPlaceholderText(f"filter {kind}s…")
+        self.filter.textChanged.connect(self._apply_filter)
+        layout.addWidget(self.filter)
+
+        area = QScrollArea()
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        # `body` is what QScrollArea stretches to fill the viewport once there
+        # are only a couple of rows of cards left to show — a filter down to
+        # three cards leaves most of the dialog's height unclaimed. The grid
+        # goes inside `self._body`'s own child, `self._grid_host`, with an
+        # `addStretch()` after it: a QGridLayout's own `setAlignment` only
+        # takes effect when it is nested inside another layout, not when it is
+        # installed directly on a widget, so it does nothing for `body` here
+        # and the slack would otherwise fall to whichever child of a card is
+        # not held at a fixed size — the heading label, stretched tall.
+        self._body = QWidget()
+        body_layout = QVBoxLayout(self._body)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        self._grid_host = QWidget()
+        self._grid = QGridLayout(self._grid_host)
+        body_layout.addWidget(self._grid_host)
+        body_layout.addStretch(1)
+        area.setWidget(self._body)
+        layout.addWidget(area, 1)
+
+        # Sinks are few enough (6) that sectioning them would be one card
+        # anyway; FAMILIES only covers stages.
+        groups = FAMILIES if kind == "stage" else (("Sinks", tuple(registered("sink"))),)
+        self._columns = 4 if kind == "stage" else 1
+        self._lists: list[QListWidget] = []
+        self._cards: list[QWidget] = []
+        for title, members in groups:
+            card, listw = self._card(title, members)
+            self._lists.append(listw)
+            self._cards.append(card)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.ok_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self.ok_button.setEnabled(False)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.resize(640, 520)
+        self.filter.setFocus()
+        self._relayout(self._cards)  # initial packing, same path a filter uses
+
+    def _card(self, title: str, members: tuple[str, ...]) -> tuple[QWidget, QListWidget]:
+        card = QFrame()
+        card.setObjectName("card")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(2, 2, 2, 2)
+        heading = QLabel(title)
+        heading.setObjectName("section")
+        # Fixed, not left to its sizeHint: a QGridLayout equalises every cell in
+        # a row to the tallest one, and a heading is the one child in a card
+        # that isn't already held to a fixed height — left free, it is what
+        # absorbs that slack, stretching a short family's title down away from
+        # its list.
+        heading.setFixedHeight(ROW_HEIGHT)
+        card_layout.addWidget(heading)
+
+        listw = QListWidget()
+        listw.setItemDelegate(RowDelegate(listw))
+        listw.setFrameShape(QFrame.Shape.NoFrame)
+        # Horizontal stays off regardless of row count: the base
+        # sizeHint().width() this delegate inherits reflects the un-elided
+        # text, wider than the card, even though the delegate elides at paint
+        # time to whatever width it is actually given — left at the default
+        # "as needed", that mismatch shows a bar that has nothing to scroll to.
+        listw.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # Vertical is "as needed": capped at CARD_ROWS, a family with more
+        # members scrolls inside its own card rather than growing past it.
+        listw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        listw.setFixedHeight(min(len(members), CARD_ROWS) * ROW_HEIGHT + 4)
+        for name in members:
+            item = QListWidgetItem(name)
+            # Four columns in 640px leaves each card ~150px wide, and the
+            # delegate elides a name like `brightness_contrast` to fit it — the
+            # tooltip is what makes the elided name still readable on hover.
+            item.setToolTip(name)
+            marks = {
+                "kind": self.kind,
+                "type": name,
+                "name": None,
+                "stateful": self.kind == "stage" and name in STATEFUL,
+            }
+            item.setData(Qt.ItemDataRole.UserRole, marks)
+            listw.addItem(item)
+        listw.itemClicked.connect(lambda item, source=listw: self._choose(source, item.text()))
+        listw.itemDoubleClicked.connect(lambda item: self._accept_choice(item.text()))
+        card_layout.addWidget(listw)
+        # Pinning the heading's own height (above) stops it from stretching,
+        # but with every child in this layout fixed-size, Qt has nowhere
+        # obvious to put a shorter card's leftover height and spreads it across
+        # the margins and inter-widget spacing instead — nudging the heading
+        # down along with everything below it. An explicit stretch item claims
+        # that leftover space for itself, so heading and list stay pinned to
+        # the top with zero slack between them, and any blank space a shorter
+        # card ends up with lands after the list, where it is inert.
+        card_layout.addStretch(1)
+        return card, listw
+
+    def _choose(self, source: QListWidget, name: str) -> None:
+        # Only one row selected across every card — clearing the others is
+        # what makes twelve independent lists read as one choice.
+        for other in self._lists:
+            if other is not source:
+                other.blockSignals(True)
+                other.setCurrentRow(-1)
+                other.blockSignals(False)
+        self.chosen = name
+        self.ok_button.setEnabled(True)
+
+    def _accept_choice(self, name: str) -> None:
+        self.chosen = name
+        self.accept()
+
+    def _apply_filter(self, text: str) -> None:
+        needle = text.strip().lower()
+        visible: list[QWidget] = []
+        for card, listw in zip(self._cards, self._lists):
+            matched = False
+            for row in range(listw.count()):
+                item = listw.item(row)
+                hit = needle in item.text().lower()
+                listw.setRowHidden(row, not hit)
+                matched = matched or hit
+            card.setVisible(matched)
+            if matched:
+                visible.append(card)
+        self._relayout(visible)
+
+    def _relayout(self, visible_cards: list[QWidget]) -> None:
+        """Repack the grid to only the visible cards, in family order.
+
+        Rebuilds the `QGridLayout` from scratch rather than clearing and
+        re-filling the existing one: `QGridLayout.takeAt` releases a widget's
+        cell but the layout's row/column count — and the size it reserves for
+        them — never shrinks back down, a limitation Qt does not work around.
+        Reused, a filter down to three cards would still visually reserve the
+        blank rows the other nine used to occupy.
+
+        Two steps, in this order and not the other way round: first drain
+        every item out with `takeAt` — which detaches a card from the layout
+        without deleting it, leaving it parented to `self._grid_host` — and
+        only once the old grid holds nothing do we hand it to a throwaway
+        widget to be garbage-collected. Orphaning it while it still held the
+        cards deletes them along with it: a `QLayout` owns whatever widgets
+        are in it, and that ownership cascades.
+        """
+        while self._grid.count():
+            self._grid.takeAt(0)
+        QWidget().setLayout(self._grid)  # now-empty; safe to let go of
+        self._grid = QGridLayout(self._grid_host)
+        for position, card in enumerate(visible_cards):
+            self._grid.addWidget(card, position // self._columns, position % self._columns)
+
+    @staticmethod
+    def get_type(parent: QWidget, kind: str) -> str | None:
+        """The chosen ``type:`` name, or ``None`` if the dialog was cancelled."""
+        dialog = AddDialog(parent, kind)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            return dialog.chosen
+        return None
 
 
 def move(seq: Any, src: int, dst: int) -> None:
@@ -543,9 +751,8 @@ class MainWindow(QMainWindow):
     # --- edits -------------------------------------------------------------- #
 
     def add(self, kind: str) -> None:
-        names = registered(kind)
-        name, ok = QInputDialog.getItem(self, f"Add {kind}", f"{kind}:", names, 0, False)
-        if not ok:
+        name = AddDialog.get_type(self, kind)
+        if name is None:
             return
         widget = self.stage_list if kind == "stage" else self.sink_list
         at = widget.currentRow() + 1 if widget.currentRow() >= 0 else len(self.specs(kind))

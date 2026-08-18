@@ -76,11 +76,18 @@ moves.
 
 ![Adding, reordering and tapping a stage](assets/gui-stages.svg)
 
-`+` opens the palette, which is `registered("stage")` — 41 stages, 3 sources, 6
+`+` opens the palette — half the main window's width, and laid out as a grid of
+family cards (the same twelve `docs/stages.md` groups into: Adjust, Blur /
+morphology, Motion — models, and so on) rather than one long combo. Every name
+in it is `registered("stage")` or `registered("sink")` — 41 stages, 3 sources, 6
 sinks, listed because they registered themselves, not because anyone typed them
-here. The new stage is inserted after the selected one and written out with only
-its *required* parameters; everything else is a default, and a default stays out
-of the file.
+here. A stage that carries state between frames shows the same amber dot the
+main list marks it with; a filter box above the cards narrows every card at
+once, since a grid is still a lot to scan by eye for one specific name. Clicking
+a row selects it — across cards, only one row is ever selected — and a
+double-click accepts immediately. The new stage is inserted after the selected
+one and written out with only its *required* parameters; everything else is a
+default, and a default stays out of the file.
 
 Reorder by dragging inside the list, or with `Ctrl+↑` / `Ctrl+↓`. Order is
 composition: `canny` then `harris(draw_on: image)` puts the corners on the edge

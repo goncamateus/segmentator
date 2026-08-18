@@ -45,6 +45,28 @@ STATEFUL = frozenset(
 # Keys of a stage spec that are not constructor parameters.
 RESERVED = ("type", "name")
 
+# The "Add stage" palette's sections. Editorial, not derivable from the
+# registry — a family is a grouping by what you reach for it *for*, which the
+# registry has no notion of — so, like STATEFUL, it is hand-maintained and
+# checked by _demo() rather than generated. Matches docs/stages.md and
+# docs/assets/stage-families.svg exactly: same 12 families, same order, same
+# membership, so the palette a user opens in the editor is the same shape as
+# the catalogue they might have already read.
+FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Adjust", ("brightness_contrast", "saturation", "gamma", "gray", "colorspace", "resize", "select")),
+    ("Blur / morphology", ("median_blur", "gaussian_blur", "clahe", "morphology")),
+    ("Threshold", ("threshold", "adaptive_threshold")),
+    ("Region of interest", ("roi", "paste_roi")),
+    ("Edges", ("canny", "sobel", "laplacian")),
+    ("Geometry", ("hough_lines", "hough_circles", "harris", "shi_tomasi", "contours", "bounding_boxes", "blobs")),
+    ("Keypoints", ("keypoints",)),
+    ("Texture / colour", ("hog", "lbp", "histogram")),
+    ("Masking", ("static_mask", "apply_mask", "mean_background")),
+    ("Motion — models", ("mog2", "knn", "frame_diff", "three_frame_diff")),
+    ("Motion — flow", ("farneback", "lucas_kanade")),
+    ("Motion — after", ("motion_heat", "heatmap", "motion_objects")),
+)
+
 
 def _choices() -> dict[tuple[str, str], tuple[str, ...]]:
     """String parameters with a fixed set of valid values, as a dropdown each.
@@ -181,7 +203,22 @@ def _demo() -> None:
     """The three rules above, checked against the repo's own configs."""
     import io as io_module
 
-    assert STATEFUL <= set(registered("stage")), STATEFUL - set(registered("stage"))
+    assert STATEFUL <= set(registered("stage"))
+
+    # Every shipped stage is filed into exactly one family — added twice or not
+    # at all is a bug in FAMILIES, not something the palette should hide. A
+    # leading underscore (test_pipeline.py's "_test_tag") marks a registration
+    # that exists only for a test's own process and was never meant to be filed
+    # anywhere — the registry is process-global, so a full test run can leave
+    # one behind by the time this runs.
+    shipped = {name for name in registered("stage") if not name.startswith("_")}
+    seen: set[str] = set()
+    for name, members in FAMILIES:
+        duplicate = seen & set(members)
+        assert not duplicate, f"{name!r} repeats {duplicate}"
+        seen |= set(members)
+    assert seen == shipped, seen ^ shipped
+
     assert [p.name for p in params("stage", "gray")] == []
     assert [p.name for p in params("stage", "canny")] == ["lo", "hi"]
 

@@ -7,24 +7,41 @@
   </defs>
   <rect width="920" height="400" fill="#f5f7fa"/>
 
-  <text x="24" y="26" font-size="12" font-weight="600" fill="#3e4c59">Add — the palette is `registered("stage")`</text>
+  <text x="24" y="26" font-size="12" font-weight="600" fill="#3e4c59">Add — a sectioned, filterable palette</text>
   <text x="330" y="26" font-size="12" font-weight="600" fill="#3e4c59">Reorder — drag, or Ctrl+↑ / Ctrl+↓</text>
   <text x="648" y="26" font-size="12" font-weight="600" fill="#3e4c59">Tap — `name:` makes it addressable</text>
 
   <!-- add -->
   <g transform="translate(24 40)">
     <rect width="280" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
-    <text x="14" y="24" font-size="11" font-weight="600" fill="#1f2933">Add stage</text>
-    <rect x="14" y="36" width="252" height="22" rx="3" fill="#f5f7fa" stroke="#1f6feb"/>
-    <text x="22" y="51" font-size="11" fill="#1f2933">median_blur</text><text x="252" y="51" font-size="11" fill="#7b8794">▾</text>
-    <g font-size="10" fill="#52606d">
-      <text x="22" y="76">mean_background</text>
-      <rect x="14" y="82" width="252" height="18" rx="3" fill="#e3f0ff"/><text x="22" y="95" fill="#1f2933">median_blur</text>
-      <text x="22" y="114">mog2</text>
-      <text x="22" y="132">morphology</text>
-      <text x="22" y="150">motion_heat</text>
+    <text x="14" y="20" font-size="11" font-weight="600" fill="#1f2933">Add stage</text>
+    <text x="266" y="20" font-size="9" fill="#7b8794" text-anchor="end">640px</text>
+    <rect x="14" y="28" width="252" height="16" rx="3" fill="#f5f7fa" stroke="#cbd2d9"/>
+    <text x="20" y="39" font-size="9" fill="#9aa5b1">filter stages…</text>
+
+    <g font-size="9">
+      <!-- card 1 -->
+      <text x="14" y="58" font-weight="600" fill="#3e4c59">Blur / morphology</text>
+      <rect x="14" y="62" width="120" height="60" rx="4" fill="#fff" stroke="#cbd2d9"/>
+      <text x="20" y="76" fill="#52606d">median_blur</text>
+      <rect x="17" y="82" width="114" height="14" rx="3" fill="#e3f0ff" stroke="#1f6feb"/>
+      <text x="20" y="92" font-weight="600" fill="#1f2933">gaussian_blur</text>
+      <text x="20" y="112" fill="#52606d">morphology</text>
+
+      <!-- card 2 -->
+      <text x="146" y="58" font-weight="600" fill="#3e4c59">Motion — models</text>
+      <rect x="146" y="62" width="120" height="60" rx="4" fill="#fff" stroke="#cbd2d9"/>
+      <text x="152" y="76" fill="#52606d">mog2</text>
+      <circle cx="258" cy="72.5" r="3.5" fill="#f0b429"/>
+      <text x="152" y="92" fill="#52606d">knn</text>
+      <circle cx="258" cy="88.5" r="3.5" fill="#f0b429"/>
+      <text x="152" y="108" fill="#52606d">frame_diff</text>
+      <circle cx="258" cy="104.5" r="3.5" fill="#f0b429"/>
     </g>
-    <text x="14" y="172" font-size="10" fill="#7b8794">41 stages, 3 sources, 6 sinks — the registry, not a list</text>
+
+    <text x="14" y="140" font-size="9" fill="#7b8794">12 families, same grouping as `docs/stages.md` —</text>
+    <text x="14" y="152" font-size="9" fill="#7b8794">a grid, not a 41-row combo. The dot is `STATEFUL`,</text>
+    <text x="14" y="164" font-size="9" fill="#7b8794">reused from the main list's own row painter.</text>
   </g>
   <text x="24" y="238" font-size="11" fill="#52606d">The new stage lands <tspan font-style="italic">after</tspan> the selected one, with only</text>
   <text x="24" y="254" font-size="11" fill="#52606d">its required parameters written out. Everything else is</text>
