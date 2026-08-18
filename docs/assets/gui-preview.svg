@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" width="920" height="440" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <title>What each preview tab is looking at, and how the key resolves</title>
+  <defs>
+    <marker id="v-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
+    </marker>
+  </defs>
+  <rect width="920" height="440" fill="#f5f7fa"/>
+  <text x="24" y="26" font-size="13" font-weight="600" fill="#3e4c59">One frame, four things to look at</text>
+
+  <!-- the chain -->
+  <g transform="translate(24 48)" font-size="10">
+    <rect width="92" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="12" y="19" fill="#3e4c59">source</text>
+    <rect x="112" width="92" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="124" y="19" fill="#3e4c59">1 gray</text>
+    <rect x="224" width="92" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="236" y="19" fill="#3e4c59">2 farneback</text>
+    <rect x="336" width="92" height="30" rx="5" fill="#e3f0ff" stroke="#1f6feb" stroke-width="1.5"/><text x="348" y="19" fill="#1f2933" font-weight="600">3 threshold</text>
+    <rect x="448" width="104" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="460" y="19" fill="#3e4c59">4 morphology</text>
+    <rect x="572" width="104" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="584" y="19" fill="#3e4c59">5 motion_objects</text>
+    <g font-size="9" fill="#5c3d00">
+      <rect x="240" y="38" width="44" height="15" rx="7" fill="#fdf3d8" stroke="#f0b429"/><text x="248" y="49">flow</text>
+      <rect x="464" y="38" width="44" height="15" rx="7" fill="#fdf3d8" stroke="#f0b429"/><text x="472" y="49">mask</text>
+    </g>
+    <g font-size="9" fill="#9aa5b1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+      <text x="124" y="70">#0</text><text x="236" y="70">#1</text><text x="348" y="70">#2</text><text x="460" y="70">#3</text><text x="584" y="70">#4</text>
+    </g>
+  </g>
+
+  <text x="24" y="150" font-size="11" fill="#7b8794">Every stage is previewable whether the config named it or not: the editor taps each position as `#n`, and a `name:` adds a second key.</text>
+  <text x="24" y="166" font-size="11" fill="#7b8794">Only the named ones are addressable from the config — `#2` exists for the editor, `mask` exists for the sinks. Each tab asks for one key:</text>
+
+  <!-- tabs -->
+  <g transform="translate(24 190)" font-size="10">
+    <rect width="150" height="22" rx="3" fill="#1f6feb"/><text x="12" y="15" fill="#fff">selected: threshold</text>
+    <rect x="158" width="72" height="22" rx="3" fill="#e4e7eb"/><text x="174" y="15" fill="#52606d">source</text>
+    <rect x="238" width="120" height="22" rx="3" fill="#e4e7eb"/><text x="250" y="15" fill="#52606d">ffmpeg ← image</text>
+    <rect x="366" width="116" height="22" rx="3" fill="#e4e7eb"/><text x="378" y="15" fill="#52606d">ffmpeg ← mask</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#1f6feb">
+      <text x="12" y="36">#2</text><text x="174" y="36">source</text><text x="250" y="36">image</text><text x="378" y="36">mask</text>
+    </g>
+  </g>
+  <!-- resolution order -->
+  <g transform="translate(24 240)">
+    <rect width="430" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="16" y="26" font-size="12" font-weight="600" fill="#3e4c59">How a key resolves — `frame_for(ctx, key)`</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+      <text x="16" y="52" fill="#1f2933">image</text><text x="120" y="52" fill="#7b8794">the chain's final output (the default)</text>
+      <text x="16" y="74" fill="#1f2933">source</text><text x="120" y="74" fill="#7b8794">the untouched BGR frame</text>
+      <text x="16" y="96" fill="#1f2933">flow, mask</text><text x="120" y="96" fill="#7b8794">a named stage's tap</text>
+      <text x="16" y="118" fill="#1f2933">mask, heat</text><text x="120" y="118" fill="#7b8794">an image left in ctx.store</text>
+      <text x="16" y="140" fill="#1f2933">#0 … #4</text><text x="120" y="140" fill="#7b8794">a stage position — the editor only</text>
+    </g>
+    <text x="16" y="164" font-size="11" fill="#52606d">Exactly the order a batch run uses: a sink tab shows what that sink would write.</text>
+  </g>
+
+  <g transform="translate(470 240)">
+    <rect width="426" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="16" y="26" font-size="12" font-weight="600" fill="#3e4c59">Sinks are shown, never run</text>
+    <text x="16" y="48" font-size="11" fill="#52606d">The editor builds no sink and opens no file. A sink tab is</text>
+    <text x="16" y="64" font-size="11" fill="#52606d">that sink's `input:` resolved against this frame — which is</text>
+    <text x="16" y="80" font-size="11" fill="#52606d">the whole of what a `display` or `ffmpeg` sink does with it.</text>
+    <text x="16" y="106" font-size="11" fill="#52606d">`csv` and `json` have no picture, so they stay out of the</text>
+    <text x="16" y="122" font-size="11" fill="#52606d">tab strip; the table under the frame is what they would</text>
+    <text x="16" y="138" font-size="11" fill="#52606d">have written for it.</text>
+    <text x="16" y="164" font-size="11" fill="#1f8a70">To actually write files: File ▸ Copy run command.</text>
+  </g>
+</svg>

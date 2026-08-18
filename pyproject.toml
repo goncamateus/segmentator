@@ -10,8 +10,13 @@ dependencies = [
     "scikit-image>=0.24",
 ]
 
+[project.optional-dependencies]
+# The editor only. A headless install — a batch box, CI — never pulls Qt in.
+gui = ["pyqt6>=6.7", "ruamel.yaml>=0.18"]
+
 [project.scripts]
 segmentator = "cli:main"
+segmentator-gui = "segmentator.gui.main:main"
 
 [dependency-groups]
 dev = [

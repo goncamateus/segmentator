@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 470" width="920" height="470" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <title>Branching with taps and select: what the config format can express, and what it cannot</title>
+  <defs>
+    <marker id="b-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/>
+    </marker>
+    <marker id="b-map" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b44d12"/>
+    </marker>
+  </defs>
+  <rect width="920" height="470" fill="#f5f7fa"/>
+
+  <text x="24" y="26" font-size="13" font-weight="600" fill="#3e4c59">config.yaml</text>
+  <text x="480" y="26" font-size="13" font-weight="600" fill="#3e4c59">what it means</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+    <rect x="24" y="38" width="418" height="192" rx="6" fill="#1f2933"/>
+    <text x="38" y="60" fill="#9fb3c8">stages:</text>
+    <text x="38" y="78" fill="#e8eef5">  - {type: canny, </text><text x="180" y="78" fill="#f0b429">name: edges</text><text x="270" y="78" fill="#e8eef5">}</text>
+    <text x="38" y="96" fill="#e8eef5">  - {type: hough_lines, draw_on: source}</text>
+    <text x="38" y="114" fill="#e8eef5">  - {type: select, </text><text x="180" y="114" fill="#f0b429">input: edges</text><text x="278" y="114" fill="#e8eef5">}</text>
+    <text x="38" y="132" fill="#e8eef5">  - {type: contours, draw_on: image}</text>
+    <text x="38" y="160" fill="#9fb3c8">sinks:</text>
+    <text x="38" y="178" fill="#e8eef5">  - {type: ffmpeg, path: out.mp4}</text>
+    <text x="38" y="196" fill="#e8eef5">  - {type: image,  path: e.png, </text>
+    <text x="38" y="212" fill="#f0b429">      input: edges</text><text x="150" y="212" fill="#e8eef5">}</text>
+  </g>
+
+  <g transform="translate(480 44)" font-size="10">
+    <rect width="120" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="12" y="19" fill="#1f2933">canny</text>
+    <rect x="76" y="8" width="40" height="15" rx="7" fill="#fdf3d8" stroke="#f0b429"/><text x="82" y="19" fill="#5c3d00">edges</text>
+    <rect y="56" width="120" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="12" y="75" fill="#1f2933">hough_lines</text>
+    <rect y="112" width="120" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="12" y="131" fill="#1f2933">select</text>
+    <rect y="168" width="120" height="30" rx="5" fill="#fff" stroke="#9aa5b1"/><text x="12" y="187" fill="#1f2933">contours</text>
+    <rect x="216" y="56" width="120" height="30" rx="5" fill="#eafaf3" stroke="#1f8a70"/><text x="228" y="75" fill="#1f8a70">image sink</text>
+    <rect x="216" y="168" width="120" height="30" rx="5" fill="#eafaf3" stroke="#1f8a70"/><text x="228" y="187" fill="#1f8a70">ffmpeg sink</text>
+    <g stroke="#7b8794" stroke-width="1.6" fill="none" marker-end="url(#b-arrow)">
+      <path d="M60 30 V52"/><path d="M60 86 V108"/><path d="M60 142 V164"/>
+      <path d="M120 186 H212"/>
+    </g>
+    <g stroke="#b44d12" stroke-width="1.4" fill="none" marker-end="url(#b-map)" stroke-dasharray="5 3">
+      <path d="M120 15 C170 15 176 60 212 68"/>
+      <path d="M96 25 C40 44 -34 66 -8 124"/>
+    </g>
+    <text x="132" y="40" font-size="10" fill="#b44d12">the same tap,</text>
+    <text x="132" y="52" font-size="10" fill="#b44d12">read twice</text>
+  </g>
+
+  <g transform="translate(24 250)">
+    <rect width="418" height="90" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="16" y="24" font-size="12" font-weight="600" fill="#3e4c59">`select` reaches back past a stage that consumed the frame</text>
+    <text x="16" y="46" font-size="11" fill="#52606d">`hough_lines` leaves a colour overlay in `ctx.image`, so the edge map is gone</text>
+    <text x="16" y="62" font-size="11" fill="#52606d">from the chain — but not from the taps. `select` rebinds `ctx.image` from one,</text>
+    <text x="16" y="78" font-size="11" fill="#52606d">using the same resolution rules a sink's `input:` uses.</text>
+  </g>
+
+  <g transform="translate(24 356)">
+    <rect width="418" height="96" rx="6" fill="#fff" stroke="#1f8a70"/>
+    <text x="16" y="24" font-size="12" font-weight="600" fill="#1f8a70">Expressible: a tree</text>
+    <text x="16" y="44" font-size="11" fill="#52606d">One producer, any number of consumers. Every stage has exactly one</text>
+    <text x="16" y="60" font-size="11" fill="#52606d">input, so the whole thing flattens to an ordered list plus `name:` taps —</text>
+    <text x="16" y="76" font-size="11" fill="#52606d">which is what the file already is, and why the editor shows a list.</text>
+    <g transform="translate(334 24)" stroke="#1f8a70" stroke-width="1.5" fill="none">
+      <circle cx="10" cy="10" r="7" fill="#eafaf3"/><circle cx="46" cy="10" r="7" fill="#eafaf3"/>
+      <circle cx="82" cy="-4" r="7" fill="#eafaf3"/><circle cx="82" cy="24" r="7" fill="#eafaf3"/>
+      <path d="M17 10 H39M53 7 L75 -2M53 13 L75 22"/>
+    </g>
+  </g>
+
+  <g transform="translate(462 250)">
+    <rect width="434" height="202" rx="6" fill="#fff" stroke="#f0b429"/>
+    <text x="16" y="24" font-size="12" font-weight="600" fill="#b44d12">Not expressible: a merge</text>
+    <text x="16" y="46" font-size="11" fill="#5c3d00">Two producers feeding one stage. `Pipeline.run` carries a single</text>
+    <text x="16" y="62" font-size="11" fill="#5c3d00">`ctx.image` down an ordered list, so a stage has nowhere to receive a</text>
+    <text x="16" y="78" font-size="11" fill="#5c3d00">second input: masking this frame by that other branch, differencing two</text>
+    <text x="16" y="94" font-size="11" fill="#5c3d00">preprocessing variants, compositing an overlay onto a different base.</text>
+    <text x="16" y="122" font-size="11" fill="#52606d">Making it possible means stages taking an `input:` too, named buffers</text>
+    <text x="16" y="138" font-size="11" fill="#52606d">instead of one `ctx.image`, and a topological sort — and a decision about</text>
+    <text x="16" y="154" font-size="11" fill="#52606d">what `ctx.store` means when two branches both write `contours`.</text>
+    <text x="16" y="182" font-size="11" fill="#7b8794">Until then: one chain, several outputs. Which is every config here so far.</text>
+    <g transform="translate(330 20)" stroke="#b44d12" stroke-width="1.5" fill="none">
+      <circle cx="10" cy="-6" r="6" fill="#fdf3d8"/><circle cx="10" cy="14" r="6" fill="#fdf3d8"/>
+      <circle cx="66" cy="4" r="6" fill="#fdf3d8"/>
+      <path d="M16 -4 L60 2M16 12 L60 6"/>
+      <path d="M28 -12 L48 18" stroke="#d94f34" stroke-width="2"/>
+      <path d="M48 -12 L28 18" stroke="#d94f34" stroke-width="2"/>
+    </g>
+  </g>
+</svg>

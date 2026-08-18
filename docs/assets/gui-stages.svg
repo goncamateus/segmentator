@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 400" width="920" height="400" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <title>Adding, reordering and tapping a stage</title>
+  <defs>
+    <marker id="s-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/>
+    </marker>
+  </defs>
+  <rect width="920" height="400" fill="#f5f7fa"/>
+
+  <text x="24" y="26" font-size="12" font-weight="600" fill="#3e4c59">Add — the palette is `registered("stage")`</text>
+  <text x="330" y="26" font-size="12" font-weight="600" fill="#3e4c59">Reorder — drag, or Ctrl+↑ / Ctrl+↓</text>
+  <text x="648" y="26" font-size="12" font-weight="600" fill="#3e4c59">Tap — `name:` makes it addressable</text>
+
+  <!-- add -->
+  <g transform="translate(24 40)">
+    <rect width="280" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="14" y="24" font-size="11" font-weight="600" fill="#1f2933">Add stage</text>
+    <rect x="14" y="36" width="252" height="22" rx="3" fill="#f5f7fa" stroke="#1f6feb"/>
+    <text x="22" y="51" font-size="11" fill="#1f2933">median_blur</text><text x="252" y="51" font-size="11" fill="#7b8794">▾</text>
+    <g font-size="10" fill="#52606d">
+      <text x="22" y="76">mean_background</text>
+      <rect x="14" y="82" width="252" height="18" rx="3" fill="#e3f0ff"/><text x="22" y="95" fill="#1f2933">median_blur</text>
+      <text x="22" y="114">mog2</text>
+      <text x="22" y="132">morphology</text>
+      <text x="22" y="150">motion_heat</text>
+    </g>
+    <text x="14" y="172" font-size="10" fill="#7b8794">41 stages, 3 sources, 6 sinks — the registry, not a list</text>
+  </g>
+  <text x="24" y="238" font-size="11" fill="#52606d">The new stage lands <tspan font-style="italic">after</tspan> the selected one, with only</text>
+  <text x="24" y="254" font-size="11" fill="#52606d">its required parameters written out. Everything else is</text>
+  <text x="24" y="270" font-size="11" fill="#52606d">a default, and a default stays out of the file.</text>
+
+  <!-- reorder -->
+  <g transform="translate(330 40)" font-size="11">
+    <rect width="130" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="12" y="22" font-size="10" fill="#7b8794">before</text>
+    <text x="12" y="46" fill="#52606d">1. gray</text>
+    <rect x="6" y="54" width="118" height="20" rx="4" fill="#e3f0ff" stroke="#1f6feb"/>
+    <text x="12" y="68" fill="#1f2933">2. threshold</text>
+    <text x="12" y="92" fill="#52606d">3. morphology</text>
+    <text x="12" y="116" fill="#52606d">4. contours</text>
+
+    <rect x="164" width="130" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <text x="176" y="22" font-size="10" fill="#7b8794">after</text>
+    <text x="176" y="46" fill="#52606d">1. gray</text>
+    <text x="176" y="70" fill="#52606d">2. morphology</text>
+    <rect x="170" y="78" width="118" height="20" rx="4" fill="#e3f0ff" stroke="#1f6feb"/>
+    <text x="176" y="92" fill="#1f2933">3. threshold</text>
+    <text x="176" y="116" fill="#52606d">4. contours</text>
+    <path d="M136 64 H160" stroke="#7b8794" stroke-width="1.4" fill="none" marker-end="url(#s-arrow)"/>
+  </g>
+  <text x="330" y="238" font-size="11" fill="#52606d">Order is composition: a threshold below a morphology</text>
+  <text x="330" y="254" font-size="11" fill="#52606d">means something different from one above it. The</text>
+  <text x="330" y="270" font-size="11" fill="#52606d">comment attached to a moved line moves with it.</text>
+
+  <!-- tap -->
+  <g transform="translate(648 40)">
+    <rect width="248" height="180" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <g font-size="11">
+      <text x="14" y="28" fill="#52606d">name (tap)</text>
+      <rect x="14" y="36" width="220" height="20" rx="3" fill="#f5f7fa" stroke="#cbd2d9"/><text x="22" y="50" fill="#1f2933">mask</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">
+      <rect x="14" y="70" width="220" height="94" rx="4" fill="#1f2933"/>
+      <text x="26" y="90" fill="#e8eef5">- {type: morphology, op: open,</text>
+      <text x="26" y="104" fill="#e8eef5">   ksize: 3, </text><text x="106" y="104" fill="#f0b429">name: mask</text><text x="184" y="104" fill="#e8eef5">}</text>
+      <text x="26" y="128" fill="#9fb3c8">sinks:</text>
+      <text x="26" y="142" fill="#e8eef5">- {type: ffmpeg, path: m.mp4,</text>
+      <text x="26" y="156" fill="#f0b429">   input: mask</text><text x="122" y="156" fill="#e8eef5">}</text>
+    </g>
+  </g>
+  <text x="648" y="238" font-size="11" fill="#52606d">A tap is opt-in and costs nothing until it exists.</text>
+  <text x="648" y="254" font-size="11" fill="#52606d">Naming a stage makes it appear in every `input:`</text>
+  <text x="648" y="270" font-size="11" fill="#52606d">dropdown in the window — and adds a preview tab.</text>
+
+  <g transform="translate(24 296)">
+    <rect width="872" height="86" rx="6" fill="#fdf3d8" stroke="#f0b429"/>
+    <text x="16" y="26" font-size="12" font-weight="600" fill="#b44d12">A tap holds the frame <tspan font-style="italic">after</tspan> the stage ran</text>
+    <text x="16" y="48" font-size="11" fill="#5c3d00">`static_mask` publishes a mask into `ctx.store` but leaves the frame alone — so naming it taps its <tspan font-style="italic">input</tspan> image, not the</text>
+    <text x="16" y="66" font-size="11" fill="#5c3d00">mask. Reach the mask itself with `input: mask`, which the dropdown offers because the store is part of how a key resolves.</text>
+  </g>
+</svg>
