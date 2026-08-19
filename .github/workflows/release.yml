@@ -28,6 +28,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # PyQt6 links against these at import time, even under the offscreen platform
+      # plugin — not installed on the bare ubuntu-22.04 runner image, so `import PyQt6`
+      # fails with "libEGL.so.1: cannot open shared object file" before Qt ever gets to
+      # pick a platform plugin. Not needed on macOS, which uses its own Cocoa backend.
+      - name: Install Qt runtime libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libdbus-1-3
+
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
