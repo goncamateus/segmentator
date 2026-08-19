@@ -84,6 +84,11 @@ ROW_HEIGHT = 22
 # many stages happen to be filed under it.
 CARD_ROWS = 3
 
+# Rows shown in the sink card before it scrolls. Sinks are a single card, not
+# a grid row sharing height with siblings, so it can hold far more than a
+# stage family card before scrolling is worth it.
+SINK_LIST_ROWS = 20
+
 
 class RowDelegate(QStyledItemDelegate):
     """Paints one stage or sink row the way `docs/assets/gui-window.svg` draws it.
@@ -219,8 +224,9 @@ class AddDialog(QDialog):
         self._columns = 4 if kind == "stage" else 1
         self._lists: list[QListWidget] = []
         self._cards: list[QWidget] = []
+        max_rows = CARD_ROWS if kind == "stage" else SINK_LIST_ROWS
         for title, members in groups:
-            card, listw = self._card(title, members)
+            card, listw = self._card(title, members, max_rows)
             self._lists.append(listw)
             self._cards.append(card)
 
@@ -250,7 +256,7 @@ class AddDialog(QDialog):
         self.filter.setFocus()
         self._relayout(self._cards)  # initial packing, same path a filter uses
 
-    def _card(self, title: str, members: tuple[str, ...]) -> tuple[QWidget, QListWidget]:
+    def _card(self, title: str, members: tuple[str, ...], max_rows: int) -> tuple[QWidget, QListWidget]:
         card = QFrame()
         card.setObjectName("card")
         # White panel, 1px border, and a coloured bar across the top edge — the
@@ -292,10 +298,10 @@ class AddDialog(QDialog):
         # time to whatever width it is actually given — left at the default
         # "as needed", that mismatch shows a bar that has nothing to scroll to.
         listw.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        # Vertical is "as needed": capped at CARD_ROWS, a family with more
+        # Vertical is "as needed": capped at max_rows, a family with more
         # members scrolls inside its own card rather than growing past it.
         listw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        listw.setFixedHeight(min(len(members), CARD_ROWS) * ROW_HEIGHT + 4)
+        listw.setFixedHeight(min(len(members), max_rows) * ROW_HEIGHT + 4)
         for name in members:
             item = QListWidgetItem(name)
             # Four columns in 640px leaves each card ~150px wide, and the
