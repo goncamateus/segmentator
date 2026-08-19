@@ -287,6 +287,13 @@ class AddDialog(QDialog):
         # way. Sized off the app font so it tracks the 9pt the rest of the
         # editor uses rather than whatever the platform's fixed font defaults to.
         mono = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        # The hint is not belt-and-braces. On macOS that call hands back a private
+        # `.AppleSystemUIFontMonospaced`, which normal family matching cannot resolve,
+        # and an unresolved family falls back to a *proportional* font — the names
+        # would quietly render as prose. A style hint is what the fallback consults,
+        # so it picks a fixed-pitch face instead of Helvetica.
+        mono.setStyleHint(QFont.StyleHint.Monospace)
+        mono.setFixedPitch(True)
         # A point under the headings, which is the proportion the figure draws
         # them at — and monospace is wide enough that the point buys back most
         # of a name like `brightness_contrast`.
