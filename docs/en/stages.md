@@ -4,7 +4,7 @@
 Sources produce frames, stages transform them, sinks consume them; the format
 that wires them together is in [Writing a config](configuration.md).
 
-![The stage catalogue, by family](assets/stage-families.svg)
+![The stage catalogue, by family](../assets/stage-families.svg)
 
 A stage marked with an amber dot carries state from one frame to the next. That
 is worth knowing for two reasons: it is the only thing a stage is allowed to

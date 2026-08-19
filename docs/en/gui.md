@@ -18,7 +18,7 @@ editor shows that as a named reference rather than as a second edge. The
 reasoning behind that choice, and what a node canvas would have cost instead, is
 in [Why a list and not a canvas](#why-a-list-and-not-a-canvas).
 
-![The editor: stage list, generated form, preview](assets/gui-window.svg)
+![The editor: stage list, generated form, preview](../assets/gui-window.svg)
 
 That is not a sketch of the intended design — it is what the window renders. The
 editor forces one of its own two palettes and the Fusion style rather than
@@ -32,7 +32,7 @@ theme that hides them.
 The `☀` in the corner of the menu bar switches; the glyph is the theme you are
 in, so `☾` means night. The choice is remembered between sessions.
 
-![The same editor at night](assets/gui-window-dark.svg)
+![The same editor at night](../assets/gui-window-dark.svg)
 
 Same layout, same meanings. Two roles do not simply invert, because a palette
 that flips every channel mechanically loses the things the light one was chosen
@@ -64,7 +64,7 @@ somewhere else. The document is read and written by ruamel's round-trip parser,
 not by `yaml.safe_load`, and the difference is the point: `configs/*.yaml` are
 heavily commented on purpose, and a save has to give those comments back.
 
-![What a save does to a hand-written config](assets/gui-save.svg)
+![What a save does to a hand-written config](../assets/gui-save.svg)
 
 A `git diff` after a save shows the lines you changed and nothing else — key
 order, quoting, flow style and blank lines all survive. The one thing that does
@@ -74,7 +74,7 @@ moves.
 
 ## Adding, removing and reordering stages
 
-![Adding, reordering and tapping a stage](assets/gui-stages.svg)
+![Adding, reordering and tapping a stage](../assets/gui-stages.svg)
 
 `+` opens the palette — half the main window's width, and laid out as a grid of
 family cards (the same twelve `docs/stages.md` groups into: Adjust, Blur /
@@ -104,7 +104,7 @@ map, and the same two the other way round does not.
 
 ## Editing a parameter
 
-![How the form is generated, and how live knobs are told from construction ones](assets/gui-params.svg)
+![How the form is generated, and how live knobs are told from construction ones](../assets/gui-params.svg)
 
 Each row writes its key into the YAML only when it differs from the constructor
 default, and deletes the key when it goes back — so a terse config stays terse
@@ -149,7 +149,7 @@ Nothing is encoded, nothing is written, and pointing a sink at
 
 ## Previewing
 
-![What each preview tab is looking at](assets/gui-preview.svg)
+![What each preview tab is looking at](../assets/gui-preview.svg)
 
 Every stage is previewable whether the config named it or not: the editor taps
 each position as `#n` as well as by name. `#2` exists for the editor; `mask`
@@ -172,7 +172,7 @@ worker thread, so dragging never competes with a 200 ms HOG for the main loop.
 Tuning while paused is the case worth understanding, because it is the one where
 a preview can quietly lie:
 
-![What happens when a knob moves while the preview is paused](assets/gui-transport.svg)
+![What happens when a knob moves while the preview is paused](../assets/gui-transport.svg)
 
 Three rules, all of them goncanalyser's, restated for a chain whose state lives
 on the stage instances:
@@ -269,9 +269,9 @@ is the usual one; it wants a `gray` above it.
 
 | | |
 |---|---|
-| [gui/spec.py](../segmentator/gui/spec.py) | signatures, the live-vs-rebuild rule, YAML round-trip. No Qt. |
-| [gui/style.py](../segmentator/gui/style.py) | both palettes, as a stylesheet and a `QPalette` |
-| [gui/worker.py](../segmentator/gui/worker.py) | the preview thread: prefix cache, the three rules, warm-up replay |
-| [gui/window.py](../segmentator/gui/window.py) | the window and every operation above |
-| [gui/main.py](../segmentator/gui/main.py) | entry point, and the Qt plugin fix |
-| [tests/test_gui.py](../tests/test_gui.py) | runs headless: `QT_QPA_PLATFORM=offscreen uv run pytest tests/test_gui.py` |
+| [gui/spec.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/spec.py) | signatures, the live-vs-rebuild rule, YAML round-trip. No Qt. |
+| [gui/style.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/style.py) | both palettes, as a stylesheet and a `QPalette` |
+| [gui/worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/worker.py) | the preview thread: prefix cache, the three rules, warm-up replay |
+| [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | the window and every operation above |
+| [gui/main.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/main.py) | entry point, and the Qt plugin fix |
+| [tests/test_gui.py](https://github.com/goncamateus/segmentator/blob/main/tests/test_gui.py) | runs headless: `QT_QPA_PLATFORM=offscreen uv run pytest tests/test_gui.py` |

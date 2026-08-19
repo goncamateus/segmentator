@@ -1,0 +1,124 @@
+site_name: segmentator
+site_description: Configuration-driven image and video segmentation — a YAML pipeline of sources, stages and sinks, with a live-preview editor on top.
+site_url: https://goncamateus.github.io/segmentator/
+site_author: goncamateus
+repo_url: https://github.com/goncamateus/segmentator
+repo_name: goncamateus/segmentator
+edit_uri: edit/main/docs/
+copyright: Documentation built from the source it documents.
+
+# `docs/en` and `docs/pt` are locale roots handled by the i18n plugin below;
+# `docs/assets` is outside both, so it is copied into each language's build and
+# `../assets/x.svg` resolves the same from either.
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    # navigation.instant is deliberately absent: mkdocs-static-i18n warns that the
+    # language switcher's contextual link (stay on this page, change language) is
+    # not compatible with it, and switching language is the point of a bilingual site.
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tooltips
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search:
+      lang:
+        - en
+        - pt
+  - i18n:
+      docs_structure: folder
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+          nav:
+            - Home: index.md
+            - Installation: installation.md
+            - Writing a config: configuration.md
+            - The catalogue: stages.md
+            - The editor: gui.md
+        - locale: pt
+          name: Português (Brasil)
+          build: true
+          site_name: segmentator
+          site_description: Segmentação de imagem e vídeo orientada por configuração — um pipeline YAML de sources, stages e sinks, com um editor de pré-visualização ao vivo.
+          theme:
+            language: pt
+          nav:
+            - Início: index.md
+            - Instalação: installation.md
+            - Escrevendo um config: configuration.md
+            - O catálogo: stages.md
+            - O editor: gui.md
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/goncamateus/segmentator
+      name: segmentator on GitHub
+
+# Build failures rather than a site with a broken link in it. The two languages
+# have to stay in step by hand, and this is what makes a missing translation or a
+# renamed figure a red build instead of a 404 someone finds later.
+strict: true
+
+# Anchors default to `info`, which means a cross-page link to a heading that was
+# renamed in one language and not the other passes quietly. Promoted to a warning,
+# which `strict` turns into a failure — translated headings mean translated anchors,
+# and that is exactly the class of link that rots first.
+validation:
+  anchors: warn
+  absolute_links: warn
+  unrecognized_links: warn

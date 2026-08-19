@@ -35,7 +35,7 @@ the list of known ones. There is no schema to keep in step: the constructor
 
 ## The context
 
-![Anatomy of a pipeline](assets/pipeline-anatomy.svg)
+![Anatomy of a pipeline](../assets/pipeline-anatomy.svg)
 
 ```python
 @dataclass
@@ -106,7 +106,7 @@ rejected.
 
 ## Branching with `select`
 
-![Branching with taps and select](assets/config-branching.svg)
+![Branching with taps and select](../assets/config-branching.svg)
 
 A stage that draws consumes the working frame. `select` reaches back past it,
 using the same resolution rules as a sink's `input:`:

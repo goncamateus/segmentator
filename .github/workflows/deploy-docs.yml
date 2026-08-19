@@ -1,0 +1,72 @@
+name: docs
+
+# Builds the MkDocs site and publishes it to GitHub Pages at
+# https://goncamateus.github.io/segmentator/
+#
+# ONE MANUAL STEP, ONCE: repository Settings -> Pages -> Source must be set to
+# "GitHub Actions". Without it `actions/deploy-pages` fails with "Not Found" on the
+# very first run, and no amount of re-running fixes it.
+on:
+  push:
+    branches: [main]
+    # The site is built from these and nothing else, so a code-only commit does not
+    # spend a few minutes republishing an identical site.
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:
+
+# GITHUB_TOKEN scopes. `pages: write` and `id-token: write` are what the official
+# deploy action needs; `contents: read` is all the build needs. Nothing here pushes
+# to a branch, so there is no gh-pages branch and no force push.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. Not cancel-in-progress: a half-finished deploy that gets
+# cancelled leaves Pages serving whatever it had, which is worse than queueing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # --no-project on purpose: building the documentation does not need PyQt6, OpenCV
+      # or scikit-image, and `uv sync` would install a few hundred MB of them to run a
+      # static site generator. The two --with packages are the whole toolchain.
+      - name: Build the site
+        run: |
+          uv run --no-project --python 3.11 \
+            --with mkdocs-material \
+            --with mkdocs-static-i18n \
+            mkdocs build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
