@@ -1,0 +1,91 @@
+name: release
+
+# A macOS installer cannot be cross-built from Linux, so this workflow is the only way it
+# gets produced. Push a tag to cut a release; run it by hand to smoke-test the packaging
+# without tagging.
+#
+# Windows is not built here — see the Packaging section of the README.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Oldest supported runner on purpose: an AppImage links against the glibc it was
+          # built on, so building on the newest Ubuntu would refuse to start on older ones.
+          - os: ubuntu-22.04
+            artifact: AppImage
+          # arm64. cv2 and scikit-image publish no universal2 wheels, so there is no one
+          # dmg that covers both Macs — add a macos-13 entry here if x86_64 is also needed.
+          - os: macos-14
+            artifact: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --no-dev --extra gui --group build
+
+      # Cheap guard: the suite is pure-Python and fast, and it catches a broken
+      # dependency before several minutes of packaging does.
+      - name: Self-checks
+        run: uv run --no-dev --extra gui --group build pytest
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          uv run --no-dev --extra gui --group build pyinstaller --noconfirm segmentator.spec
+          bash packaging/linux/build-appimage.sh
+
+      # This script runs PyInstaller itself: the spec's BUNDLE needs the .icns to exist
+      # before the build starts, and the script is what generates it.
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: bash packaging/macos/build-dmg.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: segmentator-${{ matrix.os }}
+          # Named explicitly so the unpacked onedir tree does not get uploaded too.
+          path: |
+            dist/*.AppImage
+            dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          # Unsigned builds trip Gatekeeper; say so where users download.
+          body: |
+            Download the installer for your platform below. This packages the editor
+            (`segmentator-gui`) only — the CLI is a `uv run segmentator` tool, see the
+            README.
+
+            **macOS** — the app is not notarised, so Gatekeeper will block the first
+            launch. Right-click the app in Applications and choose *Open*, then confirm.
+
+            **Linux** — `chmod +x` the AppImage and run it. No installation needed.
+
+            **Windows** — no prebuilt installer. Build it from source: see the
+            Packaging section of the README.
+          generate_release_notes: true

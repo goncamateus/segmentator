@@ -1,0 +1,5 @@
+#!/bin/sh
+# AppImage entry point. Arguments are forwarded so that
+# `./segmentator.AppImage configs/motion.yaml` still opens that config, same as segmentator-gui does.
+HERE=$(dirname "$(readlink -f "$0")")
+exec "$HERE/usr/bin/segmentator-gui" "$@"

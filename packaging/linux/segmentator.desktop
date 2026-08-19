@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Segmentator
+GenericName=Image and video segmentation editor
+Comment=Configuration-driven image and video segmentation, with a live-preview editor
+Exec=segmentator-gui %f
+Icon=segmentator
+Categories=Graphics;ImageProcessing;
+Terminal=false
+MimeType=video/mp4;video/quicktime;video/x-matroska;video/webm;application/x-yaml;

@@ -120,3 +120,42 @@ uv run pytest
 the stages — ported rather than invented, so a passing suite means the two repos
 agree on numbers, not merely that both run. `tests/test_gui.py` covers the editor
 and runs headless under the offscreen Qt platform.
+
+## Packaging
+
+`segmentator.spec` is one PyInstaller recipe, and packages the editor (`segmentator-gui`)
+only — the CLI is a `uv run segmentator` tool, not something a double-clickable app has a
+use for. Linux and macOS each have a short script that turns the bundle into an installer.
+
+```bash
+uv sync --no-dev --extra gui --group build
+
+# Linux: bundle first, then wrap it.
+uv run --no-dev --extra gui --group build pyinstaller --noconfirm segmentator.spec
+bash packaging/linux/build-appimage.sh   # -> dist/segmentator-VERSION-ARCH.AppImage
+
+# macOS is one step, not two: the spec's BUNDLE needs the .icns, and this script is what
+# generates it, so it calls PyInstaller itself.
+bash packaging/macos/build-dmg.sh        # -> dist/segmentator-VERSION-arm64.dmg
+```
+
+`--extra gui --group build` belongs on every `uv run` in a build, including the ones that
+only read the version — without `--group build` uv re-syncs and drops PyInstaller back out
+of the environment, and without `--extra gui` there is no PyQt6 to bundle.
+
+An installer can only be built on the platform it targets, which is why
+`.github/workflows/release.yml` exists: on tag push it builds the AppImage and the dmg and
+attaches both to a GitHub release. Windows is not in that matrix — build it by hand from the
+same spec if you need it.
+
+One packaging constraint worth knowing before touching dependencies: the GUI depends on
+plain `opencv-python`, not `opencv-python-headless` — the opposite of goncanalyser's choice,
+and for the opposite reason. `DisplaySink` needs the full wheel to open an OpenCV window in
+a batch run; `segmentator/gui/main.py` works around the resulting Qt-plugin clash by popping
+`QT_QPA_PLATFORM_PLUGIN_PATH` before PyQt6 loads (see [docs/en/gui.md](docs/en/gui.md#troubleshooting)).
+That workaround has to survive into the frozen bundle too, which is why it lives in the entry
+point PyInstaller packages rather than in a dev-only setup step.
+
+`packaging/icon.png` is a placeholder. Replace it with a real 1024×1024 PNG; the macOS
+`.icns` is derived from it at build time by `build-dmg.sh`, and the Linux AppImage uses it
+as-is.
