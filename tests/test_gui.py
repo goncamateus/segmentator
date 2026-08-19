@@ -424,6 +424,21 @@ def test_a_default_is_removed_rather_than_written_out(window):
     assert "value" not in window.cfg["stages"][2]
 
 
+def test_resetting_a_live_param_to_its_default_does_not_raise(app, footage):
+    """_write pops a key when it's set back to its default; _sync must cope with
+    that instead of indexing the now-missing key (regression for the crash at
+    the original worker.py:201)."""
+    stages = [{"type": "gray"}, {"type": "threshold", "value": 90, "name": "mask"}]
+    worker = worker_at(app, footage, stages)
+
+    specs = [dict(entry) for entry in worker.specs]
+    del specs[1]["value"]  # what _write does when value is reset to the default (127)
+    worker.specs = tuple(specs)
+    worker._sync(worker.specs, same_frame=False, reset=False)
+
+    assert worker._stages[1].value == 127
+
+
 def test_reordering_moves_the_comment_with_the_stage(window, project):
     window.stage_list.setCurrentRow(1)
     window.shift(1)  # farneback, and its calibration comment, move down one

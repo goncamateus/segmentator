@@ -38,7 +38,7 @@ import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QImage
 
-from segmentator.gui.spec import STATEFUL, rebuild_params
+from segmentator.gui.spec import STATEFUL, params, rebuild_params
 from segmentator.pipeline import Ctx, build, frame_for
 
 # Frames replayed through the chain prefix after a reset, so differencing and
@@ -197,8 +197,9 @@ class PreviewWorker(QThread):
                     warm = True
                     reset_stages.append(spec.get("type", "?"))
             else:
+                defaults = {p.name: p.default for p in params("stage", spec.get("type", ""))}
                 for key in changed - {"name"}:
-                    setattr(self._stages[position], key, spec[key])
+                    setattr(self._stages[position], key, spec.get(key, defaults.get(key)))
                 self._stages[position].name = spec.get("name")
 
         del self._stages[len(specs) :]
