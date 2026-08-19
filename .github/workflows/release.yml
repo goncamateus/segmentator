@@ -38,7 +38,7 @@ jobs:
       # Cheap guard: the suite is pure-Python and fast, and it catches a broken
       # dependency before several minutes of packaging does.
       - name: Self-checks
-        run: uv run --no-dev --extra gui --group build pytest
+        run: uv run --extra gui --group build pytest
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
