@@ -45,6 +45,22 @@ jobs:
       - name: Install dependencies
         run: uv sync --no-dev --extra gui --group build
 
+      # The tag names the release; pyproject names the files inside it — the packaging
+      # scripts read `importlib.metadata`, never the ref. Nothing keeps the two in step,
+      # so a tag pushed without the version bump publishes a release called v0.2.0 whose
+      # assets are all `segmentator-0.1.0-*`. Fail here, before the packaging burns the
+      # runner minutes to produce the wrong filenames.
+      - name: Tag matches project version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          project=$(uv run --no-dev --extra gui --group build python -c 'from importlib.metadata import version; print(version("segmentator"))')
+          if [ "$tag" != "$project" ]; then
+              echo "tag $GITHUB_REF_NAME says $tag, pyproject.toml says $project — bump the version or fix the tag" >&2
+              exit 1
+          fi
+
       # Cheap guard: the suite is pure-Python and fast, and it catches a broken
       # dependency before several minutes of packaging does.
       - name: Self-checks
