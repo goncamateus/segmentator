@@ -565,6 +565,7 @@ class MainWindow(QMainWindow):
         self._current = "source"
         self._measured: tuple[int, dict, dict] = (0, {}, {})
         self.theme = str(QSettings("segmentator", "gui").value("theme", "light"))
+        self._scale = 1.0
 
         self.setWindowTitle(f"segmentator — {self.path.name}")
         self.resize(1280, 760)
@@ -716,12 +717,17 @@ class MainWindow(QMainWindow):
         action(edit, "Move &down", lambda: self.shift(1), "Ctrl+Down")
 
     def _theme_button(self) -> None:
-        """Day/night, in the corner of the menu bar."""
+        """Day/night, in the status bar.
+
+        Not the menu bar's corner: macOS renders the menu bar natively, and
+        QMenuBar corner widgets are silently dropped there — only Windows/Linux
+        show them.
+        """
         self.theme_button = QToolButton()
         self.theme_button.setAutoRaise(True)
         self.theme_button.setObjectName("theme")
         self.theme_button.clicked.connect(self.toggle_theme)
-        self.menuBar().setCornerWidget(self.theme_button, Qt.Corner.TopRightCorner)
+        self.statusBar().addPermanentWidget(self.theme_button)
         self._show_theme()
 
     def _show_theme(self) -> None:
@@ -734,11 +740,21 @@ class MainWindow(QMainWindow):
         self.set_theme("light" if self.theme == "dark" else "dark")
 
     def set_theme(self, theme: str) -> None:
-        """Restyle everything, including what was painted before the switch."""
         self.theme = theme
-        style.apply(QApplication.instance(), theme)
         QSettings("segmentator", "gui").setValue("theme", theme)
         self._show_theme()
+        self._restyle()
+
+    def _scale_text(self) -> None:
+        """Point size follows window width: the figure's 9pt is tuned for 1280px."""
+        scale = round(max(0.75, min(1.75, self.width() / 1280)), 2)
+        if scale != self._scale:
+            self._scale = scale
+            self._restyle()
+
+    def _restyle(self) -> None:
+        """Restyle everything, including what was painted before the switch."""
+        style.apply(QApplication.instance(), self.theme, self._scale)
         # Three things hold a colour of their own rather than reading the sheet:
         # the delegate paints from the live palette and only needs a repaint, the
         # form's amber labels carry an inline style, and the metrics cells were
@@ -1011,6 +1027,7 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt name
         super().resizeEvent(event)
         self.repaint_view()
+        self._scale_text()
 
     # --- files ---------------------------------------------------------------- #
 

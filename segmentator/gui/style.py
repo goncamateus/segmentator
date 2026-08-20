@@ -196,7 +196,7 @@ QToolButton#theme {{
     background: transparent;
     border: 0;
     color: {muted};
-    font-size: 13pt;
+    font-size: {theme_size}pt;
     padding: 0 10px 2px 10px;
 }}
 QToolButton#theme:hover {{ color: {amber}; }}
@@ -211,9 +211,9 @@ QToolTip {{ background: {ink}; color: {panel}; border: 0; padding: 4px; }}
 """
 
 
-def sheet(colours: dict[str, str]) -> str:
-    """The stylesheet for one palette."""
-    return TEMPLATE.format(mono=MONO, **colours)
+def sheet(colours: dict[str, str], scale: float = 1.0) -> str:
+    """The stylesheet for one palette, at a given text scale."""
+    return TEMPLATE.format(mono=MONO, theme_size=round(13 * scale), **colours)
 
 
 def palette(colours: dict[str, str]) -> QPalette:
@@ -238,8 +238,11 @@ def palette(colours: dict[str, str]) -> QPalette:
     return built
 
 
-def apply(app, theme: str = "light") -> None:
+def apply(app, theme: str = "light", scale: float = 1.0) -> None:
     """Style one QApplication. Call it before the window is built.
+
+    ``scale`` follows the window size — 1.0 is the 1280px the figure was
+    drawn at — so text grows and shrinks with it instead of sitting fixed.
 
     Raises:
         KeyError: on an unknown theme name, listing the known ones.
@@ -256,10 +259,10 @@ def apply(app, theme: str = "light") -> None:
     # size or two larger and the tab strip stops fitting. Points, not pixels, so
     # a HiDPI desktop still scales it.
     font = app.font()
-    font.setPointSize(9)
+    font.setPointSize(round(9 * scale))
     app.setFont(font)
     app.setPalette(palette(colours))
-    app.setStyleSheet(sheet(colours))
+    app.setStyleSheet(sheet(colours, scale))
 
 
 def label_style() -> str:
