@@ -22,7 +22,7 @@ from segmentator.pipeline import registered
 
 PyQt6 = pytest.importorskip("PyQt6")
 
-from PyQt6.QtWidgets import QApplication  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QPushButton  # noqa: E402
 
 from segmentator.gui.worker import WARMUP, PreviewWorker, preview_key, to_qimage  # noqa: E402
 
@@ -714,3 +714,160 @@ def test_add_does_nothing_on_cancel(monkeypatch, window):
     window.add("stage")
 
     assert list(window.cfg["stages"]) == before
+
+
+# --------------------------------------------------------------------------- #
+# launcher: the window that replaced the startup file picker
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def clip(tmp_path):
+    """A real mp4, because a new project is derived from a video and only a video."""
+    path = tmp_path / "a clip: derived.mp4"  # the space and colon are the point
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 10.0, (96, 64))
+    if not writer.isOpened():
+        pytest.skip("this OpenCV build has no mp4v encoder")
+    for index in range(20):
+        frame = np.zeros((64, 96, 3), np.uint8)
+        cv2.rectangle(frame, (index * 3, 20), (index * 3 + 12, 40), (255, 255, 255), -1)
+        writer.write(frame)
+    writer.release()
+    return path
+
+
+def test_a_new_project_writes_a_config_beside_its_video(clip, monkeypatch, tmp_path):
+    from segmentator.gui import launcher
+
+    monkeypatch.chdir(tmp_path)  # no `configs/` here, so it falls back to the video
+    written = launcher.starter_config(clip)
+
+    assert written == clip.with_suffix(".yaml")
+    cfg = spec_module.load(written)
+    # The quoting has to survive a path with a space and a colon in it.
+    assert cfg["source"] == {"type": "video", "path": str(clip)}
+    assert cfg["name"] == clip.stem
+
+
+def test_a_new_project_prefers_a_configs_directory_when_there_is_one(clip, monkeypatch, tmp_path):
+    from segmentator.gui import launcher
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "configs").mkdir()
+
+    assert launcher.starter_config(clip).parent == tmp_path / "configs"
+
+
+def test_a_new_project_never_overwrites_an_existing_config(clip, monkeypatch, tmp_path):
+    from segmentator.gui import launcher
+
+    monkeypatch.chdir(tmp_path)
+    first = launcher.starter_config(clip)
+    second = launcher.starter_config(clip)
+
+    assert first != second
+    assert second.name == f"{clip.stem}-2.yaml"
+    assert first.exists()
+
+
+def test_a_new_config_previews_without_an_edit(app, clip, monkeypatch, tmp_path):
+    """The whole claim of the starter template: it runs as written."""
+    from segmentator.gui import launcher
+
+    monkeypatch.chdir(tmp_path)
+    cfg = spec_module.load(launcher.starter_config(clip))
+
+    worker = PreviewWorker(cfg)
+    try:
+        worker._index = 0
+        worker._seek = None
+        worker._sync(worker.specs, same_frame=False, reset=True)
+        assert worker._render(0) is not None
+    finally:
+        worker.stop()
+
+
+def test_the_launcher_offers_new_and_open(app):
+    from segmentator.gui.launcher import LauncherWindow
+
+    launcher_window = LauncherWindow()
+    try:
+        buttons = {b.objectName(): b.text() for b in launcher_window.findChildren(QPushButton)}
+        assert buttons == {"new": "New Project", "open": "Open Project"}
+    finally:
+        launcher_window.close()
+
+
+def test_the_launcher_shows_the_packaged_version(app):
+    from segmentator.gui.launcher import LauncherWindow, app_version
+
+    launcher_window = LauncherWindow()
+    try:
+        assert launcher_window.version_label.text() == f"version: {app_version()}"
+        assert app_version()  # the tests run against an installed package
+    finally:
+        launcher_window.close()
+
+
+def drive(monkeypatch, presses, files):
+    """Run `choose` against a scripted launcher and a scripted file dialog.
+
+    `presses` is what the user clicks each time round, `files` what they pick.
+    Both are popped, so running out of either is the test's own bug, not a hang.
+    """
+    from PyQt6.QtWidgets import QDialog, QFileDialog
+
+    from segmentator.gui import launcher
+
+    presses, files = list(presses), list(files)
+
+    def exec_(self):
+        choice = presses.pop(0)
+        if choice is None:
+            return QDialog.DialogCode.Rejected
+        self.picked = choice
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(launcher.LauncherWindow, "exec", exec_)
+    monkeypatch.setattr(
+        QFileDialog,
+        "getOpenFileName",
+        staticmethod(lambda *a, **k: (files.pop(0), "")),
+    )
+    return launcher.choose(), presses, files
+
+
+def test_choosing_new_returns_a_config_written_from_the_video(app, clip, monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    chosen, _, _ = drive(monkeypatch, presses=["new"], files=[str(clip)])
+
+    assert chosen == clip.with_suffix(".yaml")
+    assert spec_module.load(chosen)["source"]["path"] == str(clip)
+
+
+def test_cancelling_the_video_dialog_comes_back_to_the_launcher(app, clip, monkeypatch, tmp_path):
+    """Backing out is "I did not mean that", not "quit the application"."""
+    monkeypatch.chdir(tmp_path)
+
+    # Press New, cancel the picker, press New again, then pick.
+    chosen, presses, files = drive(monkeypatch, presses=["new", "new"], files=["", str(clip)])
+
+    assert chosen == clip.with_suffix(".yaml")
+    assert not presses and not files  # both rounds were actually run
+
+
+def test_closing_the_launcher_opens_nothing(app, monkeypatch):
+    chosen, _, _ = drive(monkeypatch, presses=[None], files=[])
+
+    assert chosen is None
+
+
+def test_the_icon_ships_with_the_package():
+    """It moved out of `packaging/` so the launcher could read it at runtime."""
+    from PyQt6.QtGui import QPixmap
+
+    from segmentator.gui.launcher import icon_path
+
+    assert icon_path().is_file()
+    assert not QPixmap(str(icon_path())).isNull()

@@ -8,8 +8,32 @@ instead of over a batch.
 ```bash
 uv sync --extra gui
 uv run segmentator-gui configs/motion.yaml
-uv run segmentator-gui                       # opens a file picker
+uv run segmentator-gui                       # opens the launcher
 ```
+
+## Starting from nothing
+
+Name a config and the editor opens straight onto it. Name none — which is what a
+double-clicked bundle does — and you get the launcher instead.
+
+![The launcher: the icon and version, and the two ways in](../assets/gui-launcher.svg)
+
+**Open Project** is the file picker, kept. **New Project** is the path that did
+not exist before: a config is the unit of work here, and until now the only way
+to a first one was to write the YAML by hand. So it asks for the one thing a
+config cannot be written without — a video — and derives the rest, into
+`configs/` if you are running from a checkout and beside the video otherwise. A
+frozen bundle starts with its working directory at `/`, where a relative
+`configs/` would land somewhere unwritable and unfindable.
+
+What it writes is a `gray` stage and a `display` sink over that video: the
+smallest config that is a *valid* one, so the editor comes up previewing rather
+than showing an error box you have to clear before you can start. Nothing is
+ever overwritten — a name already taken gets a `-2`.
+
+![The same launcher at night](../assets/gui-launcher-dark.svg)
+
+## The editor window
 
 The config is a linear list of stages, so **the list is the graph**, drawn at 1:1
 rather than as a straight line of boxes on a canvas. Where a config does branch

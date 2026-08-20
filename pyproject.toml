@@ -36,3 +36,9 @@ py-modules = ["cli"]
 
 [tool.setuptools.packages.find]
 include = ["segmentator*"]
+
+# The app icon, which the launcher window shows. It has to live inside the
+# package rather than in `packaging/`: setuptools cannot carry data from
+# outside a package, and a wheel install has no `packaging/` to read.
+[tool.setuptools.package-data]
+"segmentator.gui" = ["assets/*.png"]

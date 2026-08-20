@@ -19,7 +19,7 @@ appdir=build/AppDir
 rm -rf "$appdir"
 mkdir -p "$appdir/usr/bin"
 cp -a dist/segmentator-gui/. "$appdir/usr/bin/"
-install -m644 packaging/icon.png "$appdir/segmentator.png"
+install -m644 segmentator/gui/assets/icon.png "$appdir/segmentator.png"
 install -m644 packaging/linux/segmentator.desktop "$appdir/segmentator.desktop"
 install -m755 packaging/linux/AppRun "$appdir/AppRun"
 

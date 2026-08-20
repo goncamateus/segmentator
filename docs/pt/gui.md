@@ -8,8 +8,32 @@ de cada vez em vez de sobre um lote.
 ```bash
 uv sync --extra gui
 uv run segmentator-gui configs/motion.yaml
-uv run segmentator-gui                       # opens a file picker
+uv run segmentator-gui                       # abre o lançador
 ```
+
+## Começando do zero
+
+Informe um config e o editor abre direto nele. Não informe nenhum — que é o que
+um bundle aberto com dois cliques faz — e você recebe o lançador.
+
+![O lançador: o ícone e a versão, e os dois caminhos de entrada](../assets/gui-launcher.svg)
+
+**Open Project** é o seletor de arquivos, mantido. **New Project** é o caminho
+que antes não existia: um config é a unidade de trabalho aqui, e até agora a
+única forma de chegar ao primeiro era escrever o YAML à mão. Então ele pede a
+única coisa sem a qual um config não pode ser escrito — um vídeo — e deriva o
+resto, em `configs/` se você estiver rodando de um checkout e ao lado do vídeo
+caso contrário. Um bundle congelado começa com o diretório de trabalho em `/`,
+onde um `configs/` relativo cairia em algum lugar não gravável e invisível.
+
+O que ele escreve é um stage `gray` e um sink `display` sobre aquele vídeo: o
+menor config que é *válido*, para que o editor suba já pré-visualizando em vez
+de mostrar uma caixa de erro que você precisa fechar antes de começar. Nada é
+sobrescrito — um nome já ocupado ganha um `-2`.
+
+![O mesmo lançador à noite](../assets/gui-launcher-dark.svg)
+
+## A janela do editor
 
 O config é uma lista linear de stages, então **a lista é o grafo**, desenhada
 1:1 em vez de como uma linha reta de caixas em uma tela. Onde um config de

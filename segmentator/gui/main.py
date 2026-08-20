@@ -23,21 +23,24 @@ def main() -> int:
     args = parser.parse_args()
 
     from PyQt6.QtCore import QSettings
-    from PyQt6.QtWidgets import QApplication, QFileDialog
+    from PyQt6.QtGui import QIcon
+    from PyQt6.QtWidgets import QApplication
 
-    from segmentator.gui import style
+    from segmentator.gui import launcher, style
     from segmentator.gui.window import MainWindow
 
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(str(launcher.icon_path())))
     # The theme the window was last left in. The window writes it back on every
     # toggle; a first run has no key and gets the light one.
     style.apply(app, str(QSettings("segmentator", "gui").value("theme", "light")))
     path = args.config
     if path is None:
-        chosen, _ = QFileDialog.getOpenFileName(None, "Open config", "configs", "YAML (*.yaml *.yml)")
-        if not chosen:
+        # No config named, so ask which one — or offer to write a first one. Closing
+        # the launcher is how you leave without opening anything.
+        path = launcher.choose()
+        if path is None:
             return 0
-        path = Path(chosen)
     window = MainWindow(path)
     window.show()
     return app.exec()

@@ -18,6 +18,8 @@ to point at are cargo cult.
 import sys
 from importlib.metadata import version
 
+from PyInstaller.utils.hooks import copy_metadata
+
 # The build env has the package installed, so the version has one source: pyproject.toml.
 VERSION = version("segmentator")
 
@@ -25,7 +27,14 @@ a = Analysis(
     ["segmentator/gui/main.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    # The icon, because the launcher window draws it, and the dist-info beside
+    # it, because the launcher also *reads* the version — and
+    # `importlib.metadata.version` raises `PackageNotFoundError` in a frozen
+    # bundle that carries the code without the metadata.
+    datas=[
+        ("segmentator/gui/assets/icon.png", "segmentator/gui/assets"),
+        *copy_metadata("segmentator"),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

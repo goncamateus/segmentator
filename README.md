@@ -156,6 +156,8 @@ a batch run; `segmentator/gui/main.py` works around the resulting Qt-plugin clas
 That workaround has to survive into the frozen bundle too, which is why it lives in the entry
 point PyInstaller packages rather than in a dev-only setup step.
 
-`packaging/icon.png` is the app icon, and 1024×1024 is the size to keep it at: the macOS
-`.icns` ladder is derived from it at build time by `build-dmg.sh` — every size down to
-16×16 — and the Linux AppImage uses it as-is.
+`segmentator/gui/assets/icon.png` is the app icon, and 1024×1024 is the size to keep it at:
+the macOS `.icns` ladder is derived from it at build time by `build-dmg.sh` — every size
+down to 16×16 — and the Linux AppImage uses it as-is. It sits inside the package rather
+than in `packaging/` because it is also read at runtime: the launcher window draws it, and
+neither a wheel install nor the frozen bundle carries `packaging/`.
