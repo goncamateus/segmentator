@@ -434,14 +434,16 @@ class ParamForm(QWidget):
         super().__init__()
         self.kind = "stage"
         self.spec: dict[str, Any] | None = None
+        self.position: int | None = None
         self._loading = False
         self._layout = QFormLayout(self)
         self._layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
-    def show_spec(self, kind: str, spec: dict[str, Any] | None) -> None:
+    def show_spec(self, kind: str, spec: dict[str, Any] | None, position: int | None = None) -> None:
         self._loading = True
         self.kind = kind
         self.spec = spec
+        self.position = position
         while self._layout.count():
             self._layout.takeAt(0).widget().deleteLater()
         if spec is None:
@@ -524,7 +526,9 @@ class ParamForm(QWidget):
 
     def _image_keys(self) -> tuple[str, ...]:
         window = self.window()
-        return getattr(window, "image_keys", lambda: ("image", "source"))()
+        upto = self.position if self.kind == "stage" else None
+        keys = getattr(window, "image_keys", None)
+        return keys(upto) if keys is not None else ("image", "source")
 
     def _write(self, key: str, value: Any) -> None:
         if self._loading or self.spec is None:
@@ -772,10 +776,18 @@ class MainWindow(QMainWindow):
             self.cfg[key] = []
         return self.cfg[key]
 
-    def image_keys(self) -> tuple[str, ...]:
-        """Everything a sink's ``input:`` or a ``draw_on:`` can currently resolve."""
-        names = [s.get("name") for s in self.specs("stage") if s.get("name")]
-        return ("image", "source", *names, "mask", "heat", "histogram")
+    def image_keys(self, upto: int | None = None) -> tuple[str, ...]:
+        """Everything an ``input:`` or ``draw_on:`` resolves to at this point.
+
+        A sink runs after the whole chain and sees all of it (``upto=None``). A
+        stage sees only what the stages above it already produced — offering a
+        name from below would write a config that raises on every frame.
+        """
+        entries = self.specs("stage")
+        above = entries if upto is None else entries[:upto]
+        names = [s.get("name") for s in above if s.get("name")]
+        published = [key for s in above for key in spec_module.PUBLISHES.get(s.get("type", ""), ())]
+        return ("image", "source", *names, *published)
 
     def reload_lists(self) -> None:
         for kind, widget in (("stage", self.stage_list), ("sink", self.sink_list)):
@@ -875,7 +887,7 @@ class MainWindow(QMainWindow):
 
     def on_stage_selected(self, row: int) -> None:
         entries = self.specs("stage")
-        self.form.show_spec("stage", entries[row] if 0 <= row < len(entries) else None)
+        self.form.show_spec("stage", entries[row] if 0 <= row < len(entries) else None, row)
         if 0 <= row < len(entries):
             self.sink_list.setCurrentRow(-1)
             self.reload_tabs()

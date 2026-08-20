@@ -45,6 +45,19 @@ STATEFUL = frozenset(
 # Keys of a stage spec that are not constructor parameters.
 RESERVED = ("type", "name")
 
+# Stages that publish an image into ``ctx.store`` under a fixed key a later
+# ``input:`` or ``draw_on:`` can name — e.g. ``contours`` also publishes
+# ``contour_mask``. Hand-maintained like STATEFUL, and checked by _demo()
+# against the registry. Only image-valued keys are listed: a stage that
+# publishes a list (``contours`` itself) or a vector (``hog``) has nothing a
+# preview could resolve to.
+PUBLISHES: dict[str, tuple[str, ...]] = {
+    "static_mask": ("mask",),
+    "motion_heat": ("heat",),
+    "histogram": ("histogram",),
+    "contours": ("contour_mask",),
+}
+
 # The "Add stage" palette's sections. Editorial, not derivable from the
 # registry — a family is a grouping by what you reach for it *for*, which the
 # registry has no notion of — so, like STATEFUL, it is hand-maintained and
@@ -223,6 +236,7 @@ def _demo() -> None:
     import io as io_module
 
     assert STATEFUL <= set(registered("stage"))
+    assert PUBLISHES.keys() <= set(registered("stage"))
 
     # Every shipped stage is filed into exactly one family — added twice or not
     # at all is a bug in FAMILIES, not something the palette should hide. A

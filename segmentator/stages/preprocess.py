@@ -328,7 +328,8 @@ class PasteRoi:
 
     Args:
         border: Draw a one-pixel outline around the pasted region.
-        draw_on: ``source`` (the untouched frame) or a named tap to paste into.
+        draw_on: ``source`` (the untouched frame), ``image`` or a named tap to
+            paste into — resolved the same way as any other stage's ``draw_on``.
     """
 
     def __init__(self, border: bool = True, draw_on: str = "source"):
@@ -351,8 +352,7 @@ class PasteRoi:
                         row[key] += y
 
         region = ctx.image
-        base = ctx.source if self.draw_on == "source" else ctx.taps[self.draw_on]
-        frame = to_bgr(base).copy()
+        frame = canvas(ctx, self.draw_on)
         if region.shape[:2] == (h, w):
             frame[y : y + h, x : x + w] = to_bgr(region)
         if self.border:
@@ -392,13 +392,10 @@ class Select:
 def canvas(ctx: Ctx, draw_on: str) -> np.ndarray:
     """A fresh BGR array to draw overlays on, so nothing is mutated in place.
 
-    ``draw_on: source`` overlays the original colour frame, which is the usual
-    choice; ``image`` draws on the current working frame, promoted to BGR, which
-    is how an overlay composes onto a mid-chain view such as an edge map.
+    ``draw_on`` resolves exactly as a sink's ``input:`` and ``select``'s do — see
+    :func:`~segmentator.pipeline.frame_for` — so ``source`` (the original colour
+    frame, the usual choice), ``image`` (the current working frame, which is how
+    an overlay composes onto a mid-chain view such as an edge map) and a named
+    tap all work. Anything single-channel is promoted to BGR on the way out.
     """
-    if draw_on not in {"source", "image"}:
-        raise ValueError(f"draw_on must be 'source' or 'image', got {draw_on!r}")
-    base = ctx.source if draw_on == "source" else ctx.image
-    if base.ndim == 2:
-        return cv2.cvtColor(base, cv2.COLOR_GRAY2BGR)
-    return base.copy()
+    return to_bgr(frame_for(ctx, draw_on)).copy()

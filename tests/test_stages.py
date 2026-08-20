@@ -268,6 +268,35 @@ def test_contours_reject_an_unknown_mode(square):
         run([{"type": "gray"}, {"type": "contours", "mode": "nope"}], square)
 
 
+def test_draw_on_and_select_both_reach_a_named_tap(square):
+    """The exact chain `Select`'s docstring recommends, run end to end.
+
+    `hough_lines` draws over `source` and leaves a 3-channel overlay in
+    `ctx.image` — `contours` cannot detect on that, so `select` reaches back to
+    the `edges` tap first. `contours` then also proves `draw_on` resolves a tap:
+    it paints on `edges` (via `draw_on: image`, `select`'s target) rather than
+    the Hough overlay it would otherwise inherit.
+    """
+    gray = build("stage", {"type": "gray"})
+    edges = build("stage", {"type": "canny"})
+    hough = build("stage", {"type": "hough_lines", "draw_on": "source"})
+    back = build("stage", {"type": "select", "input": "edges"})
+    contours = build("stage", {"type": "contours", "draw_on": "image"})
+
+    ctx = Ctx(image=square, source=square, index=0)
+    gray.apply(ctx)
+    edges.apply(ctx)
+    ctx.taps["edges"] = ctx.image  # what naming the canny stage would publish
+    hough.apply(ctx)
+    assert ctx.image.ndim == 3  # the overlay `select` is about to reach past
+
+    back.apply(ctx)
+    assert ctx.image.ndim == 2  # back to the single-channel edge map
+
+    contours.apply(ctx)
+    assert ctx.metrics["contours"] == 1
+
+
 def test_bounding_boxes_reuse_the_contours_already_found(square):
     ctx = run(
         [{"type": "gray"}, {"type": "contours"}, {"type": "bounding_boxes"}],
