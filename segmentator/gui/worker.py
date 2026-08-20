@@ -301,8 +301,14 @@ class PreviewWorker(QThread):
         for key in self.wanted:
             try:
                 images[key] = to_qimage(frame_for(ctx, key))
-            except (KeyError, ValueError, cv2.error):
+            except KeyError:
                 continue  # a sink pointing at a tap that does not exist yet
+            except (ValueError, cv2.error) as exc:
+                # Unlike a missing tap, this is a real frame that `to_qimage`
+                # could not render (e.g. a colour space packed into 2 channels,
+                # or carrying a 4th) — worth a status line instead of leaving
+                # the tab reading "nothing resolves" with no reason why.
+                self.status.emit(f"{key}: {type(exc).__name__}: {exc}")
         return images
 
     # --- the loop ----------------------------------------------------------- #
@@ -332,7 +338,19 @@ class PreviewWorker(QThread):
 
             same_frame = self._cached_index == self._index
             began = time.perf_counter()  # the warm-up replay is part of what an edit costs
-            start = self._sync(specs, same_frame, reset)
+            try:
+                start = self._sync(specs, same_frame, reset)
+            except Exception as exc:
+                # A spec that will not *build* is reported exactly like one that
+                # will not *apply*, below: a half-typed parameter is something
+                # the editor is mid-edit on, not a reason to take the preview
+                # thread down and leave a live-looking window that is dead.
+                # `self._built` is left untouched, so the next tick retries and
+                # recovers the moment the parameter is corrected.
+                self._cached_index = None
+                self.status.emit(f"{type(exc).__name__}: {exc}")
+                self.msleep(120)
+                continue
             if start is None and (specs, wanted, self._index) == drawn:
                 self.msleep(20)  # paused on a frame nobody re-tuned
                 continue

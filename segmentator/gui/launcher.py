@@ -50,9 +50,11 @@ LOGO = 256
 # box; rounded, it reads as the app icon it is.
 LOGO_RADIUS = 0.22
 
-# A `gray` stage over a real video is a valid chain, so the editor comes up with a
-# live preview rather than an error box. Comments and all: a config the editor
-# writes should read like the ones shipped in `configs/`.
+# No stages: a source and a `display` sink over it is already a valid chain, so
+# the editor comes up with a live preview rather than an error box, and the
+# first stage the user adds is a real choice instead of a placeholder to
+# delete. Comments and all: a config the editor writes should read like the
+# ones shipped in `configs/`.
 STARTER = """\
 # {stem} — a new pipeline. Add stages and sinks from the Pipeline menu.
 name: {name}
@@ -61,8 +63,7 @@ source:
   type: video
   path: {path}
 
-stages:
-  - {{type: gray}}
+stages: []
 
 sinks:
   - {{type: display, size: [640, 480]}}

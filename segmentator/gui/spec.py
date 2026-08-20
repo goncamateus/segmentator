@@ -167,7 +167,26 @@ def new_spec(kind: str, type_name: str) -> CommentedMap:
     spec = CommentedMap(type=type_name)
     for param in params(kind, type_name):
         if param.required:
-            spec[param.name] = "" if param.annotation in (str, "str", "str | Path") else 0
+            choices = CHOICES.get((type_name, param.name))
+            if choices:
+                if (type_name, param.name) == ("colorspace", "to"):
+                    # ponytail: `choices[0]` is alphabetical, and `bgr555` — a
+                    # packed 2-channel format — is first. `to_qimage` can only
+                    # render single- or 3-channel frames, so that placeholder
+                    # previewed as a silent blank ("nothing resolves '#0'")
+                    # instead of a picture. `hsv` is an ordinary 3-channel space.
+                    spec[param.name] = "hsv"
+                else:
+                    spec[param.name] = choices[0]
+            elif param.annotation in (str, "str", "str | Path"):
+                spec[param.name] = ""
+            elif "tuple" in str(param.annotation):
+                # ponytail: `resize.size` is the only required tuple parameter;
+                # a real pair so the stage builds, matching the `display` sink's
+                # shipped default.
+                spec[param.name] = [640, 480]
+            else:
+                spec[param.name] = 0
     spec.fa.set_flow_style()
     return spec
 
@@ -242,6 +261,8 @@ def _demo() -> None:
 
     assert new_spec("stage", "canny") == {"type": "canny"}
     assert new_spec("sink", "ffmpeg") == {"type": "ffmpeg", "path": ""}
+    assert new_spec("stage", "colorspace") == {"type": "colorspace", "to": "hsv"}
+    assert new_spec("stage", "resize") == {"type": "resize", "size": [640, 480]}
     print("spec ok")
 
 

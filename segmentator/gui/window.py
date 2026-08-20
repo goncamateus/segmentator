@@ -835,6 +835,11 @@ class MainWindow(QMainWindow):
         widget = self.stage_list if kind == "stage" else self.sink_list
         widget.setCurrentRow(-1)
         widget.setCurrentRow(row)
+        if row < 0:
+            # The list was just emptied. Both calls above land on -1, so
+            # `currentRowChanged` never fires and the form would otherwise keep
+            # showing — and writing into — the spec dict that was just removed.
+            self.form.show_spec(kind, None)
 
     def shift(self, delta: int) -> None:
         row = self.stage_list.currentRow()

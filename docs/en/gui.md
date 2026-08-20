@@ -26,7 +26,7 @@ config cannot be written without — a video — and derives the rest, into
 frozen bundle starts with its working directory at `/`, where a relative
 `configs/` would land somewhere unwritable and unfindable.
 
-What it writes is a `gray` stage and a `display` sink over that video: the
+What it writes is a `display` sink over that video, no stages yet: the
 smallest config that is a *valid* one, so the editor comes up previewing rather
 than showing an error box you have to clear before you can start. Nothing is
 ever overwritten — a name already taken gets a `-2`.

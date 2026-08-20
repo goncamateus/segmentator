@@ -26,7 +26,7 @@ resto, em `configs/` se você estiver rodando de um checkout e ao lado do vídeo
 caso contrário. Um bundle congelado começa com o diretório de trabalho em `/`,
 onde um `configs/` relativo cairia em algum lugar não gravável e invisível.
 
-O que ele escreve é um stage `gray` e um sink `display` sobre aquele vídeo: o
+O que ele escreve é um sink `display` sobre aquele vídeo, sem stages ainda: o
 menor config que é *válido*, para que o editor suba já pré-visualizando em vez
 de mostrar uma caixa de erro que você precisa fechar antes de começar. Nada é
 sobrescrito — um nome já ocupado ganha um `-2`.

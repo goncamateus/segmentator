@@ -263,6 +263,36 @@ def test_a_broken_chain_reports_instead_of_dying(app, footage):
     worker.source.close()
 
 
+def test_a_spec_that_fails_to_build_does_not_kill_the_loop(app, footage):
+    """A stage that raises out of its own constructor — `resize` on the freshly
+    added placeholder `size: 0`, the way `new_spec` used to seed it — is a
+    *construction*-time failure, unlike `farneback` above which fails to
+    *apply*. Before `run()` wrapped its `_sync` call in a `try/except`, this
+    exited the loop for good: the thread died silently and the editor looked
+    alive but never rendered or accepted an edit again. `run()` is called
+    directly here (never `.start()`), so the loop is driven by hand: two
+    `msleep` calls — one per failed retry — are enough to prove the `except`
+    reports and loops back instead of letting the exception escape.
+    """
+    worker = PreviewWorker(config(footage, [{"type": "resize", "size": 0}]))
+    statuses = []
+    worker.status.connect(statuses.append)
+    calls = 0
+
+    def fake_sleep(_ms):
+        nonlocal calls
+        calls += 1
+        if calls >= 2:
+            worker._running = False
+
+    worker.msleep = fake_sleep
+    worker.run()  # exits once fake_sleep stops it — no real thread involved
+    worker.source.close()
+
+    assert calls == 2, "the loop must not exit via the exception itself"
+    assert statuses and all("TypeError" in s for s in statuses)
+
+
 def test_sink_inputs_resolve_exactly_as_they_do_in_a_batch_run(app, footage):
     from segmentator.pipeline import frame_for
 
