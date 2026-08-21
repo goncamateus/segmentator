@@ -15,7 +15,7 @@ import numpy as np
 # Colours are the channel's own where that means something (R drawn red) and
 # merely distinguishable where it does not (there is no colour for "hue").
 SPACES: dict[str, tuple[int | None, tuple[str, ...], tuple[tuple[int, int, int], ...]]] = {
-    "rgb": (None, ("B", "G", "R"), ((255, 80, 80), (80, 255, 80), (80, 80, 255))),
+    "bgr": (None, ("B", "G", "R"), ((255, 80, 80), (80, 255, 80), (80, 80, 255))),
     "hsv": (cv2.COLOR_BGR2HSV, ("H", "S", "V"), ((255, 128, 0), (0, 200, 255), (230, 230, 230))),
     "lab": (cv2.COLOR_BGR2LAB, ("L", "a", "b"), ((230, 230, 230), (128, 128, 255), (255, 200, 0))),
 }
@@ -31,6 +31,22 @@ def histograms(bgr: np.ndarray, space: str) -> np.ndarray:
     code, _, _ = SPACES[space]
     img = bgr if code is None else cv2.cvtColor(bgr, code)
     return np.stack([cv2.calcHist([img], [c], None, [256], [0, 256]).ravel() for c in range(3)])
+
+
+def select_mask(
+    bgr: np.ndarray,
+    space: str,
+    ranges: tuple[tuple[int, int], tuple[int, int], tuple[int, int]],
+) -> np.ndarray:
+    """Boolean-AND band-pass mask across all three channels of ``space``, as 0/255 uint8."""
+    if space not in SPACES:
+        raise ValueError(f"unknown colour-select space {space!r}; known: {sorted(SPACES)}")
+    code, _, _ = SPACES[space]
+    img = bgr if code is None else cv2.cvtColor(bgr, code)
+    keep = np.ones(img.shape[:2], dtype=bool)
+    for channel, (lo, hi) in zip(cv2.split(img), ranges):
+        keep &= (channel >= lo) & (channel <= hi)
+    return (keep.astype(np.uint8)) * 255
 
 
 def plot(counts: np.ndarray, space: str, w: int = PLOT_W, h: int = PLOT_H) -> np.ndarray:
