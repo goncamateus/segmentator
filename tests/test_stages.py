@@ -426,12 +426,12 @@ def test_known_images_have_known_histograms():
     from segmentator.ops.color import histograms
 
     black = np.zeros((32, 32, 3), np.uint8)
-    counts = histograms(black, "rgb")
+    counts = histograms(black, "bgr")
     assert counts.shape == (3, 256)
     assert counts[0, 0] == 32 * 32 and counts[0, 1:].sum() == 0, "all black is bin 0"
 
     grey = np.full((32, 32, 3), 128, np.uint8)
-    assert histograms(grey, "rgb")[1, 128] == 32 * 32
+    assert histograms(grey, "bgr")[1, 128] == 32 * 32
 
 
 def test_histogram_measures_intensity_not_counts():
@@ -493,6 +493,28 @@ def test_apply_mask_input_reads_a_chosen_image_not_just_ctx_image():
     ctx.store["mask"] = mask
     build("stage", {"type": "apply_mask", "input": "other", "fill": 7}).apply(ctx)
     assert (ctx.image == np.where(mask == 255, other, 7).astype(np.uint8)).all()
+
+
+def test_color_select_filters_pixels_outside_the_hue_band_and_keeps_those_inside():
+    """ch0's hue range decides per pixel; ch1/ch2 default (0, 255) leaves saturation/value alone."""
+    image = np.zeros((1, 2, 3), np.uint8)
+    image[0, 0] = (255, 0, 0)  # BGR blue -> HSV hue 120, inside the band
+    image[0, 1] = (0, 0, 255)  # BGR red -> HSV hue 0, outside the band -> fill
+    ctx = run([{"type": "color_select", "space": "hsv", "ch0": [60, 130], "fill": 9}], image)
+    assert ctx.image.tolist() == [[[255, 0, 0], [9, 9, 9]]]
+    assert ctx.store["mask"].tolist() == [[255, 0]], "mask is still published for reuse"
+
+
+def test_color_select_published_mask_is_reusable_on_a_different_image():
+    """Same store['mask'] key as static_mask, so a later stage can point apply_mask at another input."""
+    image = np.zeros((1, 2, 3), np.uint8)
+    image[0, 0] = (255, 0, 0)
+    image[0, 1] = (0, 0, 255)
+    other = np.full((1, 2, 3), 40, np.uint8)
+    ctx = run([{"type": "color_select", "space": "hsv", "ch0": [60, 130]}], image)
+    ctx.taps["other"] = other
+    build("stage", {"type": "apply_mask", "input": "other", "fill": 9}).apply(ctx)
+    assert ctx.image.tolist() == [[[40, 40, 40], [9, 9, 9]]]
 
 
 def test_apply_mask_works_on_a_colour_image_not_just_grayscale(square):

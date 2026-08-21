@@ -10,14 +10,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from segmentator.ops.color import SPACES, histograms, plot
-from segmentator.ops.common import to_bgr
+from segmentator.ops.color import SPACES, histograms, plot, select_mask
+from segmentator.ops.common import mask_condition, to_bgr
 from segmentator.pipeline import Ctx, register
 
 
 @register("stage", "histogram")
 class Histogram:
-    """Per-channel histograms for ``rgb``, ``hsv`` or ``lab``.
+    """Per-channel histograms for ``bgr``, ``hsv`` or ``lab``.
 
     Leaves ``ctx.image`` alone by default and publishes the 512x256 plot as
     ``ctx.store["histogram"]``, so a sink reaches it with ``input: histogram``
@@ -28,7 +28,7 @@ class Histogram:
     centres so they are mean *intensity* rather than mean count.
     """
 
-    def __init__(self, space: str = "rgb", replace: bool = False):
+    def __init__(self, space: str = "bgr", replace: bool = False):
         if space not in SPACES:
             raise ValueError(f"unknown histogram space {space!r}; known: {sorted(SPACES)}")
         self.space = space
@@ -53,3 +53,48 @@ class Histogram:
         ctx.store["histogram"] = picture
         if self.replace:
             ctx.image = picture
+
+
+@register("stage", "color_select")
+class ColorSelect:
+    """Band-pass filter per channel in a chosen colour space.
+
+    Converts to ``space``, keeps pixels whose value on every channel falls
+    inside that channel's ``(lo, hi)`` range, and ANDs the three conditions
+    together — narrowing one channel excludes a colour band (e.g. HSV hue
+    ``ch0=(35, 130)`` keeps green-through-blue, drops red) while leaving a
+    channel at ``(0, 255)`` passes it through unrestricted. OpenCV's 8-bit
+    HSV hue tops out at 179, not 255.
+
+    Filters ``ctx.image`` immediately — pixels outside the band become
+    ``fill`` — and also publishes the mask as ``ctx.store["mask"]``, the same
+    key ``static_mask`` uses, so a later stage that reads it (``apply_mask``
+    on a different image, ``mean_background``'s ``use_mask``) picks it up
+    with no extra wiring.
+
+    Args:
+        space: ``bgr``, ``hsv`` or ``lab``.
+        ch0, ch1, ch2: Inclusive ``(lo, hi)`` range for each of ``space``'s
+            three channels, in ``SPACES``' channel order. The editor labels
+            these with the space's own channel letters (R/G/B, H/S/V, L/a/b).
+        fill: Value written outside the band.
+    """
+
+    def __init__(
+        self,
+        space: str = "hsv",
+        ch0: tuple[int, int] = (0, 255),
+        ch1: tuple[int, int] = (0, 255),
+        ch2: tuple[int, int] = (0, 255),
+        fill: int = 0,
+    ):
+        self.space = space
+        self.ch0 = ch0
+        self.ch1 = ch1
+        self.ch2 = ch2
+        self.fill = fill
+
+    def apply(self, ctx: Ctx) -> None:
+        mask = select_mask(to_bgr(ctx.image), self.space, (self.ch0, self.ch1, self.ch2))
+        ctx.store["mask"] = mask
+        ctx.image = np.where(mask_condition(mask, ctx.image), ctx.image, self.fill).astype(np.uint8)

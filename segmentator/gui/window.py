@@ -70,7 +70,16 @@ from PyQt6.QtWidgets import (
 
 from segmentator.gui import spec as spec_module
 from segmentator.gui import style
-from segmentator.gui.spec import CHOICES, FAMILIES, STATEFUL, Param, params, rebuild_params
+from segmentator.gui.spec import (
+    CHANNEL_PARAMS,
+    CHOICES,
+    FAMILIES,
+    STATEFUL,
+    Param,
+    channel_label,
+    params,
+    rebuild_params,
+)
 from segmentator.gui.style import PALETTE, label_style
 from segmentator.gui.worker import PreviewWorker, preview_key
 from segmentator.pipeline import registered
@@ -464,7 +473,7 @@ class ParamForm(QWidget):
         forced = rebuild_params(kind, spec)
         for param in rows:
             widget = self._widget(type_name, param, spec.get(param.name, param.default))
-            label = QLabel(param.name)
+            label = QLabel(channel_label(type_name, param.name, spec) or param.name)
             if param.name in forced:
                 label.setStyleSheet(label_style())
                 # The stylesheet tints the field to match the label, so the row
@@ -538,6 +547,11 @@ class ParamForm(QWidget):
             self.spec.pop(key, None)
         else:
             self.spec[key] = value
+        # `space` decides the channel letters ch0..ch2 are labelled with —
+        # those labels are drawn once in show_spec, so a value that feeds
+        # another param's label needs the form rebuilt to pick it up.
+        if key == "space" and self.spec.get("type") in CHANNEL_PARAMS:
+            self.show_spec(self.kind, self.spec, self.position)
         self.changed.emit()
 
 

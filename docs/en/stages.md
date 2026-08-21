@@ -59,7 +59,7 @@ config should have to know that.
 slow enough in the editor that you will feel it.
 
 **Masking** — `static_mask(threshold, invert)`, `apply_mask(input, mask, fill)`,
-`mean_background(n_frames, use_mask, buffer)`
+`mean_background(n_frames, use_mask, buffer)`, `color_select(space, ch0, ch1, ch2, fill)`
 
 **Motion** — `mog2(...)`, `knn(...)`, `frame_diff(lag)`, `three_frame_diff()`,
 `farneback(pyr_scale, levels, winsize, iterations, gain)`,

@@ -53,10 +53,36 @@ RESERVED = ("type", "name")
 # preview could resolve to.
 PUBLISHES: dict[str, tuple[str, ...]] = {
     "static_mask": ("mask",),
+    "color_select": ("mask",),
     "motion_heat": ("heat",),
     "histogram": ("histogram",),
     "contours": ("contour_mask",),
 }
+
+# Stages whose per-channel params should be labelled with the channel's own
+# letter (R, G, B / H, S, V / L, a, b) rather than the generic ``chN`` name a
+# fixed constructor signature is stuck with — the mapping depends on a sibling
+# param's value (``space``), which ``inspect.signature`` can't see. Hand
+# maintained like the tables above; checked by _demo().
+CHANNEL_PARAMS: dict[str, tuple[str, ...]] = {
+    "color_select": ("ch0", "ch1", "ch2"),
+}
+
+
+def channel_label(type_name: str, param_name: str, spec: dict[str, Any]) -> str | None:
+    """The channel letter for a :data:`CHANNEL_PARAMS` entry, given the spec's chosen space.
+
+    ``None`` for anything not in ``CHANNEL_PARAMS``, so a caller falls back to
+    the plain param name.
+    """
+    from segmentator.ops.color import SPACES
+
+    channels = CHANNEL_PARAMS.get(type_name)
+    if channels is None or param_name not in channels:
+        return None
+    space_default = next((p.default for p in params("stage", type_name) if p.name == "space"), "hsv")
+    _, names, _ = SPACES.get(spec.get("space", space_default), SPACES[space_default])
+    return names[channels.index(param_name)]
 
 # The "Add stage" palette's sections. Editorial, not derivable from the
 # registry — a family is a grouping by what you reach for it *for*, which the
@@ -74,7 +100,7 @@ FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Geometry", ("hough_lines", "hough_circles", "harris", "shi_tomasi", "contours", "bounding_boxes", "blobs")),
     ("Keypoints", ("keypoints",)),
     ("Texture / colour", ("hog", "lbp", "histogram")),
-    ("Masking", ("static_mask", "apply_mask", "mean_background")),
+    ("Masking", ("static_mask", "apply_mask", "mean_background", "color_select")),
     ("Motion — models", ("mog2", "knn", "frame_diff", "three_frame_diff")),
     ("Motion — flow", ("farneback", "lucas_kanade")),
     ("Motion — after", ("motion_heat", "heatmap", "motion_objects")),
@@ -99,6 +125,7 @@ def _choices() -> dict[tuple[str, str], tuple[str, ...]]:
         ("colorspace", "to"): tuple(sorted(preprocess._COLOR_CODES)),
         ("contours", "mode"): tuple(CONTOUR_MODES),
         ("histogram", "space"): tuple(SPACES),
+        ("color_select", "space"): tuple(SPACES),
         ("lbp", "method"): tuple(sorted(LBP_METHODS)),
         ("keypoints", "detector"): ("sift", "orb"),
         ("mean_background", "buffer"): mask._BUFFER_MODES,
@@ -238,6 +265,12 @@ def _demo() -> None:
 
     assert STATEFUL <= set(registered("stage"))
     assert PUBLISHES.keys() <= set(registered("stage"))
+    assert CHANNEL_PARAMS.keys() <= set(registered("stage"))
+
+    assert channel_label("color_select", "ch0", {}) == "H"  # default space: hsv
+    assert channel_label("color_select", "ch2", {"space": "bgr"}) == "R"
+    assert channel_label("color_select", "ch1", {"space": "lab"}) == "a"
+    assert channel_label("threshold", "value", {}) is None
 
     # Every shipped stage is filed into exactly one family — added twice or not
     # at all is a bug in FAMILIES, not something the palette should hide. A

@@ -61,7 +61,7 @@ nenhum config deveria precisar saber disso.
 para um lote, lento o bastante no editor para você sentir.
 
 **Máscara** — `static_mask(threshold, invert)`, `apply_mask(input, mask, fill)`,
-`mean_background(n_frames, use_mask, buffer)`
+`mean_background(n_frames, use_mask, buffer)`, `color_select(space, ch0, ch1, ch2, fill)`
 
 **Movimento** — `mog2(...)`, `knn(...)`, `frame_diff(lag)`, `three_frame_diff()`,
 `farneback(pyr_scale, levels, winsize, iterations, gain)`,

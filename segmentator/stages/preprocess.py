@@ -69,15 +69,14 @@ class ColorSpace:
     """
 
     def __init__(self, to: str):
-        self._code = _COLOR_CODES.get(to.lower())
-        if self._code is None:
+        if to.lower() not in _COLOR_CODES:
             raise ValueError(
                 f"unknown colour space {to!r}; known: {sorted(_COLOR_CODES)}"
             )
         self.to = to
 
     def apply(self, ctx: Ctx) -> None:
-        ctx.image = cv2.cvtColor(ctx.image, self._code)
+        ctx.image = cv2.cvtColor(ctx.image, _COLOR_CODES[self.to.lower()])
 
 
 @register("stage", "brightness_contrast")
