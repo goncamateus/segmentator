@@ -494,9 +494,9 @@ class ParamForm(QWidget):
             box.setChecked(bool(value))
             box.toggled.connect(lambda state: self._write(param.name, state))
             return box
-        if choices is not None or param.name == "input" or param.name == "draw_on":
+        if choices is not None or param.name in ("input", "draw_on", "mask"):
             combo = QComboBox()
-            combo.setEditable(param.name in ("input", "draw_on"))
+            combo.setEditable(param.name in ("input", "draw_on", "mask"))
             combo.addItems(list(choices or self._image_keys()))
             combo.setCurrentText("" if value is None else str(value))
             combo.currentTextChanged.connect(lambda text: self._write(param.name, text))

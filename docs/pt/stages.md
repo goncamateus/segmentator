@@ -60,8 +60,8 @@ nenhum config deveria precisar saber disso.
 `histogram(space, replace)`. HOG custa 150-300 ms em um frame 640x512 — tranquilo
 para um lote, lento o bastante no editor para você sentir.
 
-**Máscara** — `static_mask(threshold, invert)`, `apply_mask(fill)`,
-`mean_background(n_frames, use_mask)`
+**Máscara** — `static_mask(threshold, invert)`, `apply_mask(input, mask, fill)`,
+`mean_background(n_frames, use_mask, buffer)`
 
 **Movimento** — `mog2(...)`, `knn(...)`, `frame_diff(lag)`, `three_frame_diff()`,
 `farneback(pyr_scale, levels, winsize, iterations, gain)`,

@@ -144,9 +144,9 @@ def test_gray_only_stages_reject_a_colour_frame(stage_name):
         stage.apply(Ctx(image=colour, source=colour))
 
 
-def test_apply_mask_without_a_mask_names_the_missing_stage():
+def test_apply_mask_without_a_mask_names_the_missing_key():
     frame = np.zeros((4, 4), np.uint8)
-    with pytest.raises(KeyError, match="static_mask"):
+    with pytest.raises(KeyError, match="no image named 'mask'"):
         build("stage", {"type": "apply_mask"}).apply(Ctx(image=frame, source=frame))
 
 

@@ -38,6 +38,18 @@ def gamma_lut(gamma: float) -> np.ndarray:
     return np.clip((np.arange(256) / 255.0) ** (1.0 / gamma) * 255, 0, 255).astype(np.uint8)
 
 
+def mask_condition(mask: np.ndarray, image: np.ndarray) -> np.ndarray:
+    """A boolean condition from a single-channel mask, broadcastable against ``image``.
+
+    ``np.where`` aligns shapes from the trailing axis, so a ``(H, W)`` mask does
+    not line up with a ``(H, W, 3)`` colour image on its own — this puts the
+    channel axis back when ``image`` has one, so a mask fitted in grayscale
+    still applies correctly to BGR, HSV or any other colour space.
+    """
+    condition = mask == 255
+    return condition[..., None] if image.ndim == 3 else condition
+
+
 def require_gray(image: np.ndarray, stage: str) -> None:
     """Fail with the fix named, rather than deep inside a cv2 assertion."""
     if image.ndim != 2:

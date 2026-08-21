@@ -449,6 +449,109 @@ def test_histogram_leaves_the_frame_alone_unless_asked(square):
 
 
 # --------------------------------------------------------------------------- #
+# Masking
+# --------------------------------------------------------------------------- #
+
+
+def test_apply_mask_defaults_to_static_masks_store_key(square):
+    gray = cv2.cvtColor(square, cv2.COLOR_BGR2GRAY)
+    ctx = run([{"type": "gray"}, {"type": "static_mask"}, {"type": "apply_mask"}], square)
+    mask = ctx.store["mask"]
+    expected = np.where(mask == 255, gray, 0).astype(np.uint8)
+    assert (ctx.image == expected).all()
+
+
+def test_apply_mask_reads_any_published_image_not_just_static_masks_store(square):
+    """No `static_mask` in the chain — proves `mask:` isn't hardcoded to `ctx.store["mask"]`."""
+    ctx = run(
+        [
+            {"type": "gray"},
+            {"type": "threshold", "mode": "binary", "value": 127},
+            {"type": "contours", "draw_on": "image"},
+            {"type": "gray"},  # back to single-channel, matching contour_mask's shape
+        ],
+        square,
+    )
+    mask = ctx.store["contour_mask"]
+    assert ctx.store.get("mask") is None, "no static_mask ran; nothing should be at the default key"
+    assert (mask == 255).any() and (mask == 0).any(), "test is only meaningful if the mask varies"
+
+    before = ctx.image.copy()
+    build("stage", {"type": "apply_mask", "mask": "contour_mask", "fill": 9}).apply(ctx)
+    expected = np.where(mask == 255, before, 9).astype(np.uint8)
+    assert (ctx.image == expected).all()
+
+
+def test_apply_mask_input_reads_a_chosen_image_not_just_ctx_image():
+    """`input:` picks which image gets masked — not implicitly always `ctx.image`."""
+    working = np.full((4, 4), 40, np.uint8)
+    other = np.full((4, 4), 90, np.uint8)
+    mask = np.zeros((4, 4), np.uint8)
+    mask[:2] = 255
+    ctx = Ctx(image=working, source=working)
+    ctx.taps["other"] = other
+    ctx.store["mask"] = mask
+    build("stage", {"type": "apply_mask", "input": "other", "fill": 7}).apply(ctx)
+    assert (ctx.image == np.where(mask == 255, other, 7).astype(np.uint8)).all()
+
+
+def test_apply_mask_works_on_a_colour_image_not_just_grayscale(square):
+    """A mask fitted in grayscale must still broadcast onto a 3-channel image."""
+    ctx = run(
+        [{"type": "gray"}, {"type": "static_mask"}, {"type": "select", "input": "source"}],
+        square,
+    )
+    assert ctx.image.ndim == 3, "select must have restored the colour frame"
+    mask = ctx.store["mask"]
+    before = ctx.image.copy()
+    build("stage", {"type": "apply_mask", "fill": 9}).apply(ctx)
+    expected = np.where(mask[..., None] == 255, before, 9).astype(np.uint8)
+    assert ctx.image.shape == before.shape
+    assert (ctx.image == expected).all()
+
+
+def test_apply_mask_raises_when_mask_key_is_missing(square):
+    with pytest.raises(KeyError):
+        run([{"type": "gray"}, {"type": "apply_mask", "mask": "nope"}], square)
+
+
+def test_mean_background_static_buffer_freezes_after_n_frames():
+    low = np.full((4, 4, 3), 50, np.uint8)
+    high = np.full((4, 4, 3), 200, np.uint8)
+    specs = [{"type": "mean_background", "n_frames": 3, "buffer": "static"}]
+    ctx = play(specs, [low, low, low, high, high, high])
+    # mean frozen at 50 from the first window: 200 - 50 survives every later frame
+    assert (ctx.image == 150).all()
+
+
+def test_mean_background_circular_buffer_adapts_to_new_frames():
+    low = np.full((4, 4, 3), 50, np.uint8)
+    high = np.full((4, 4, 3), 200, np.uint8)
+    specs = [{"type": "mean_background", "n_frames": 3, "buffer": "circular"}]
+    ctx = play(specs, [low, low, low, high, high, high])
+    # window has slid to all-high by the last frame, so it subtracts itself to zero
+    assert (ctx.image == 0).all()
+
+
+def test_mean_background_use_mask_works_on_colour_frames():
+    """`use_mask` used to crash a moment after this on a 3-channel frame (broadcast mismatch)."""
+    frame = np.full((4, 4, 3), 80, np.uint8)
+    mask = np.zeros((4, 4), np.uint8)
+    mask[:2] = 255
+    stage = build("stage", {"type": "mean_background", "n_frames": 1, "use_mask": True})
+    ctx = Ctx(image=frame, source=frame)
+    ctx.store["mask"] = mask
+    stage.apply(ctx)
+    assert stage.ready
+    assert ctx.image.shape == frame.shape
+
+
+def test_mean_background_names_the_bad_buffer_mode():
+    with pytest.raises(ValueError, match="unknown buffer mode"):
+        build("stage", {"type": "mean_background", "buffer": "nope"})
+
+
+# --------------------------------------------------------------------------- #
 # Motion
 # --------------------------------------------------------------------------- #
 

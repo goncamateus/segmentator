@@ -90,7 +90,7 @@ def _choices() -> dict[tuple[str, str], tuple[str, ...]]:
     from segmentator.ops.color import SPACES
     from segmentator.ops.structure import CONTOUR_MODES
     from segmentator.ops.texture import LBP_METHODS
-    from segmentator.stages import preprocess
+    from segmentator.stages import mask, preprocess
 
     return {
         ("threshold", "mode"): tuple(preprocess._THRESHOLD_MODES),
@@ -101,6 +101,7 @@ def _choices() -> dict[tuple[str, str], tuple[str, ...]]:
         ("histogram", "space"): tuple(SPACES),
         ("lbp", "method"): tuple(sorted(LBP_METHODS)),
         ("keypoints", "detector"): ("sift", "orb"),
+        ("mean_background", "buffer"): mask._BUFFER_MODES,
     }
 
 
