@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from segmentator.ops.color import SPACES, histograms, plot, select_mask
-from segmentator.ops.common import mask_condition, to_bgr
+from segmentator.ops.common import masked, to_bgr
 from segmentator.pipeline import Ctx, register
 
 
@@ -97,4 +97,4 @@ class ColorSelect:
     def apply(self, ctx: Ctx) -> None:
         mask = select_mask(to_bgr(ctx.image), self.space, (self.ch0, self.ch1, self.ch2))
         ctx.store["mask"] = mask
-        ctx.image = np.where(mask_condition(mask, ctx.image), ctx.image, self.fill).astype(np.uint8)
+        ctx.image = masked(mask, ctx.image, self.fill)

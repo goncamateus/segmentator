@@ -11,7 +11,13 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from segmentator.ops.common import gamma_lut, odd_kernel, require_gray, to_bgr
+from segmentator.ops.common import (
+    gamma_lut,
+    median_blur,
+    odd_kernel,
+    require_gray,
+    to_bgr,
+)
 from segmentator.pipeline import Ctx, frame_for, register
 
 _THRESHOLD_MODES = {
@@ -137,7 +143,7 @@ class MedianBlur:
 
     def apply(self, ctx: Ctx) -> None:
         if self.ksize > 1:
-            ctx.image = cv2.medianBlur(ctx.image, self.ksize)
+            ctx.image = median_blur(ctx.image, self.ksize)
 
 
 @register("stage", "gaussian_blur")

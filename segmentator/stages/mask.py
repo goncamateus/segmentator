@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 from segmentator.background_model import BackgroundModel
-from segmentator.ops.common import mask_condition, require_gray
+from segmentator.ops.common import masked, require_gray
 from segmentator.pipeline import Ctx, frame_for, register
 
 
@@ -75,7 +75,7 @@ class ApplyMask:
     def apply(self, ctx: Ctx) -> None:
         image = frame_for(ctx, self.input)
         mask = frame_for(ctx, self.mask)
-        ctx.image = np.where(mask_condition(mask, image), image, self.fill).astype(np.uint8)
+        ctx.image = masked(mask, image, self.fill)
 
 
 _BUFFER_MODES = ("static", "circular")
@@ -109,6 +109,6 @@ class MeanBackground:
     def apply(self, ctx: Ctx) -> None:
         frame = ctx.image
         mask = ctx.store.get("mask") if self.use_mask else None
-        sample = frame if mask is None else np.where(mask_condition(mask, frame), frame, 0).astype(np.uint8)
+        sample = frame if mask is None else masked(mask, frame)
         self._model.accumulate(sample)
         ctx.image = self._model.subtract(frame)

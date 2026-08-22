@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import pytest
 
-from segmentator.ops.common import odd_kernel
+from segmentator.ops.common import masked, median_blur, odd_kernel
 from segmentator.ops.texture import LBP_METHODS
 from segmentator.pipeline import Ctx, build
 from segmentator.stages.preprocess import MIN_ROI, roi_rect
@@ -72,6 +72,35 @@ def test_blur_off_is_off_not_a_one_pixel_kernel(square):
     for kind in ("gaussian_blur", "median_blur"):
         out = run([{"type": kind, "ksize": 5}], square).image
         assert out.shape == square.shape and not (out == square).all(), kind
+
+
+def test_median_blur_bands_match_opencv():
+    """The banded median must be bit-exact, not close — parity is the whole point.
+
+    Large enough to actually split (the op falls back to a single cv2 call on a
+    frame too small to band), and noise rather than flat colour so a wrong
+    overlap shows up instead of being hidden by uniform neighbourhoods.
+    """
+    frame = np.random.default_rng(0).integers(0, 256, (720, 640, 3), dtype=np.uint8)
+    for ksize in (3, 5, 7, 9, 11):
+        assert np.array_equal(median_blur(frame, ksize), cv2.medianBlur(frame, ksize)), ksize
+    grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    assert np.array_equal(median_blur(grey, 7), cv2.medianBlur(grey, 7))
+
+
+def test_masked_matches_the_numpy_expression_it_replaced():
+    """`== 255`, not `!= 0`: a mask carrying a 128 must drop that pixel."""
+    rng = np.random.default_rng(1)
+    frame = rng.integers(0, 256, (40, 60, 3), dtype=np.uint8)
+    mask = (rng.integers(0, 2, (40, 60)) * 255).astype(np.uint8)
+    mask[0, 0] = 128
+    for image in (frame, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)):
+        for fill in (0, 37):
+            condition = mask == 255
+            want = np.where(
+                condition[..., None] if image.ndim == 3 else condition, image, fill
+            ).astype(np.uint8)
+            assert np.array_equal(masked(mask, image, fill), want), (image.ndim, fill)
 
 
 @pytest.mark.parametrize("space", ["hsv", "lab", "hls", "ycrcb"])
