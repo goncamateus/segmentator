@@ -126,6 +126,53 @@ map, and the same two the other way round does not.
 
 `−` (or `Ctrl+D`) removes whichever list has the focus.
 
+## Optimising a chain
+
+A chain tuned by hand is a ratchet. A stage goes in to fix what is on screen, a
+slider moves, another stage goes on top, and nothing is ever taken back out —
+what was load-bearing three edits ago may contribute nothing now. **Pipeline →
+Optimize…** looks for exactly that, and offers to remove it.
+
+It samples sixteen frames spread across the source, runs the chain over them,
+and then re-runs it with one change at a time, keeping only the changes that
+leave **every sink output identical** — not the preview, the sinks. That
+distinction matters: a `csv` sink watches `ctx.rows` and a `json` sink watches
+the whole of `ctx.metrics`, so with either one present a stage contributing
+nothing but `edge_px` is still output and will not be touched. With no sink at
+all, the final image is what is compared.
+
+Findings come in two strengths, and the dialog says which:
+
+* **provable** — the argument does not depend on the frames. A `gaussian_blur`
+  with `ksize: 1`; a stage whose output nothing downstream reads, which is what
+  an `apply_mask` pointed at `source` quietly does to everything above it; a run
+  of per-pixel stages (`brightness_contrast`, `gamma`, non-Otsu `threshold`)
+  collapsed into one `lut`, checked against all 256 input values rather than
+  sampled.
+* **sampled** — no counterexample was found in sixteen frames. That is
+  falsification, not proof, and the sample size is not a formality: on the chain
+  this was built against, one stage looked redundant at four frames and was
+  demonstrably load-bearing at eight.
+
+So nothing is applied on its own. Pure deletions start ticked; a fusion does
+not, because trading two named stages for a 256-entry table is a straighter
+chain to run and a muddier one to read. Untick anything you do not want and
+press OK.
+
+One more check happens then, and it is not redundant: **findings that each hold
+alone need not hold together.** Given `gray`, `gray`, `threshold`, either grey
+can go — the first because the second still converts, the second because the
+first already did — and taking both leaves the threshold looking at a colour
+frame. Ticking a combination that does not survive gets you an amber line and
+the dialog stays open.
+
+A chain holding state — anything with the amber dot — is sampled from one
+contiguous run of frames instead of scattered ones, because a background model
+handed six unrelated frames has not seen the history its output depends on.
+
+The search only looks one move ahead. A stage that becomes removable *because*
+another one went is found by running Optimize again.
+
 ## Editing a parameter
 
 ![How the form is generated, and how live knobs are told from construction ones](../assets/gui-params.svg)

@@ -26,6 +26,7 @@ Pipeline: `source → stages → sinks`, driven entirely by YAML (see `configs/*
 - [segmentator/io.py](segmentator/io.py) — concrete sources and sinks.
 - [segmentator/ops/](segmentator/ops/) — pure functions (no `Stage` protocol, no config object), organized by family: color, common, keypoints, motion, structure, texture.
 - [segmentator/stages/](segmentator/stages/) — registered `Stage` wrappers around `ops/`, same family split, plus `mask.py` and `preprocess.py`.
+- [segmentator/optimize.py](segmentator/optimize.py) — chain simplification: a dataflow walk plus a sampled oracle, driving the editor's *Pipeline → Optimize*. Headless and Qt-free; `WRITES`/`READS` here are the full store/metrics/rows tables `spec.PUBLISHES` is the image-valued subset of. Read its module docstring before touching it — the split between *provable* and *sampled* findings is the whole design, not a detail.
 - [segmentator/background_model.py](segmentator/background_model.py) — fixed mean-of-N background; `BackgroundModel.ready` is the only real state machine in the codebase (warmup vs steady).
 - [segmentator/video_writer.py](segmentator/video_writer.py) — ffmpeg/libx264 pipe sink.
 - [segmentator/gui/](segmentator/gui/) — PyQt6 editor (optional, `--extra gui`). Reads the same registry/`build()` as the CLI to generate its palette and forms — nothing about stages is hardcoded twice.

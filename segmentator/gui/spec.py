@@ -92,7 +92,7 @@ def channel_label(type_name: str, param_name: str, spec: dict[str, Any]) -> str 
 # membership, so the palette a user opens in the editor is the same shape as
 # the catalogue they might have already read.
 FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("Adjust", ("brightness_contrast", "saturation", "gamma", "gray", "colorspace", "resize", "select")),
+    ("Adjust", ("brightness_contrast", "saturation", "gamma", "lut", "gray", "colorspace", "resize", "select")),
     ("Blur / morphology", ("median_blur", "gaussian_blur", "clahe", "morphology")),
     ("Threshold", ("threshold", "adaptive_threshold")),
     ("Region of interest", ("roi", "paste_roi")),
@@ -232,6 +232,18 @@ def new_spec(kind: str, type_name: str) -> CommentedMap:
     return spec
 
 
+def as_spec(spec: dict[str, Any]) -> CommentedMap:
+    """A plain dict as the one-line mapping the configs are written in.
+
+    :func:`new_spec` builds one for a stage the user picked; this wraps one that
+    code produced — the optimizer's fused ``lut``, say — so it lands in the
+    document looking like every other line rather than as a block mapping.
+    """
+    out = CommentedMap(spec)
+    out.fa.set_flow_style()
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # YAML, comments and all
 # --------------------------------------------------------------------------- #
@@ -266,6 +278,15 @@ def _demo() -> None:
     assert STATEFUL <= set(registered("stage"))
     assert PUBLISHES.keys() <= set(registered("stage"))
     assert CHANNEL_PARAMS.keys() <= set(registered("stage"))
+
+    # PUBLISHES is the image-valued subset of the optimizer's store entries, so
+    # every one of its keys must appear there. Without this the two drift and a
+    # dead-stage analysis starts deleting stages a preview can still resolve.
+    from segmentator.optimize import WRITES
+
+    for name, keys in PUBLISHES.items():
+        store = {k.removeprefix("store:") for k in WRITES.get(name, ()) if k.startswith("store:")}
+        assert set(keys) <= store, f"{name}: {set(keys) - store} in PUBLISHES but not WRITES"
 
     assert channel_label("color_select", "ch0", {}) == "H"  # default space: hsv
     assert channel_label("color_select", "ch2", {"space": "bgr"}) == "R"

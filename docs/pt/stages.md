@@ -29,7 +29,8 @@ mais lenta que ler o próximo frame.
 ## Stages
 
 **Ajuste** — `brightness_contrast(brightness, contrast)`, `saturation(gain)`,
-`gamma(value)`, `gray`, `colorspace(to)`, `resize(size)`, `select(input)`
+`gamma(value)`, `lut(table)`, `gray`, `colorspace(to)`, `resize(size)`,
+`select(input)`
 
 **Blur / morfologia** — `median_blur(ksize)`, `gaussian_blur(ksize, sigma)`,
 `clahe(clip_limit, tile_grid)`, `morphology(op, ksize, iterations)`

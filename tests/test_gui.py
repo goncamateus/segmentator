@@ -512,6 +512,143 @@ def test_the_run_command_is_offered_rather_than_run(window, project):
 
 
 # --------------------------------------------------------------------------- #
+# optimize
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def cluttered(footage, tmp_path):
+    """A config carrying the two things a hand-tuned chain accumulates.
+
+    A `gaussian_blur ksize: 1` that does nothing, and a second `gray` on an image
+    that is already single-channel. Commented, so the round trip is testable too.
+    """
+    path = tmp_path / "cluttered.yaml"
+    path.write_text(
+        "# Keep me.\n"
+        "name: cluttered\n"
+        "\n"
+        "source:\n"
+        "  type: folder\n"
+        f"  path: {footage['path']}\n"
+        "\n"
+        "stages:\n"
+        "  - {type: gaussian_blur, ksize: 1}\n"
+        "  - {type: gray}\n"
+        "  - {type: gray}\n"
+        "\n"
+        "  # value tuned by eye.\n"
+        "  - {type: threshold, value: 40}\n"
+        "\n"
+        "sinks:\n"
+        "  - {type: ffmpeg, path: out.mp4}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_the_optimize_worker_finds_the_clutter(app, footage):
+    """Driven synchronously — `run()` is a plain method, no event loop needed."""
+    from segmentator.gui.optimize_worker import OptimizeWorker
+
+    worker = OptimizeWorker(
+        {
+            "source": dict(footage),
+            "stages": [
+                {"type": "gaussian_blur", "ksize": 1},
+                {"type": "gray"},
+                {"type": "gray"},
+                {"type": "threshold", "value": 40},
+            ],
+            "sinks": [{"type": "ffmpeg", "path": "out.mp4"}],
+        },
+        samples=6,
+    )
+    worker.run()
+
+    assert worker.findings, "the identity blur alone should have been found"
+    assert any(f.basis == "identity" and f.positions == (0,) for f in worker.findings)
+    assert worker.frames, "the frames are kept for the caller's combination check"
+    worker.release()
+    assert worker.frames == []
+
+
+def test_the_optimize_worker_reports_a_bad_source_instead_of_raising(app):
+    from segmentator.gui.optimize_worker import OptimizeWorker
+
+    worker = OptimizeWorker({"source": {"type": "video", "path": "/no/such.mp4"}, "stages": [{"type": "gray"}]})
+    seen = []
+    worker.failed.connect(seen.append)
+    worker.run()
+
+    assert seen and "source" in seen[0]
+
+
+def test_optimize_does_nothing_with_an_empty_chain(window):
+    del window.specs("stage")[:]
+
+    window.optimize()
+
+    assert window._optimizer is None
+
+
+def test_the_dialog_ticks_deletions_but_not_a_fusion(app):
+    """A fusion trades two readable stages for a 256-entry table — the user's call."""
+    from segmentator.gui.window import OptimizeDialog
+    from segmentator.optimize import Finding
+
+    findings = [
+        Finding((0,), (), "drop gaussian_blur", "identity", 1.0, "ksize: 1 is a passthrough"),
+        Finding((2, 3), ({"type": "lut"},), "fuse into one lut", "exhaustive", 4.0, "all 256 values"),
+        Finding((5,), (), "drop saturation", "sampled", 9.0, "no counterexample in 16 frames"),
+    ]
+    dialog = OptimizeDialog(None, findings)
+
+    assert [f.label for f in dialog.selected()] == ["drop gaussian_blur", "drop saturation"]
+    dialog._boxes[1][0].setChecked(True)
+    assert len(dialog.selected()) == 3
+
+
+def test_applying_a_finding_edits_the_document_and_keeps_the_comments(app, cluttered):
+    """The whole point of editing the ruamel sequence row by row."""
+    from segmentator.gui.window import MainWindow
+    from segmentator.optimize import Finding
+
+    window = MainWindow(cluttered)
+    try:
+        window.apply_optimizations([Finding((0,), (), "drop gaussian_blur", "identity")])
+
+        assert [entry["type"] for entry in window.cfg["stages"]] == ["gray", "gray", "threshold"]
+        window.save()
+        text = cluttered.read_text(encoding="utf-8")
+        assert "# Keep me." in text
+        assert "# value tuned by eye." in text
+        assert "gaussian_blur" not in text
+    finally:
+        window.close()
+
+
+def test_applying_a_fusion_writes_one_flow_style_line(app, cluttered):
+    from segmentator.gui.window import MainWindow
+    from segmentator.optimize import Finding
+
+    window = MainWindow(cluttered)
+    try:
+        table = list(range(256))
+        window.apply_optimizations(
+            [Finding((1, 2), ({"type": "lut", "table": table},), "fuse", "exhaustive")]
+        )
+
+        assert [entry["type"] for entry in window.cfg["stages"]] == ["gaussian_blur", "lut", "threshold"]
+        window.save()
+        lines = cluttered.read_text(encoding="utf-8").splitlines()
+        lut_lines = [line for line in lines if "type: lut" in line]
+        assert len(lut_lines) == 1 and lut_lines[0].lstrip().startswith("- {type: lut")
+    finally:
+        window.close()
+
+
+# --------------------------------------------------------------------------- #
 # AddDialog: the sectioned palette that replaced the one-combo picker
 # --------------------------------------------------------------------------- #
 

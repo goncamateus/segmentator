@@ -131,6 +131,54 @@ de bordas, e os mesmos dois na ordem contrária não faz isso.
 
 `−` (ou `Ctrl+D`) remove qualquer lista que estiver com o foco.
 
+## Otimizando uma cadeia
+
+Uma cadeia ajustada à mão é uma catraca. Entra um stage para corrigir o que está
+na tela, um controle é movido, outro stage entra por cima, e nada nunca sai —
+o que era essencial três edições atrás pode não contribuir com nada agora.
+**Pipeline → Optimize…** procura exatamente isso e oferece remover.
+
+Ele amostra dezesseis quadros distribuídos pela fonte, roda a cadeia sobre eles
+e então roda de novo com uma mudança de cada vez, mantendo só as que deixam
+**toda saída de sink idêntica** — não a pré-visualização, os sinks. Essa
+distinção importa: um sink `csv` observa `ctx.rows` e um `json` observa todo o
+`ctx.metrics`, então com qualquer um deles presente um stage que só contribui
+com `edge_px` continua sendo saída e não será mexido. Sem nenhum sink, a imagem
+final é o que se compara.
+
+Os achados vêm em duas forças, e o diálogo diz qual:
+
+* **provável (provable)** — o argumento não depende dos quadros. Um
+  `gaussian_blur` com `ksize: 1`; um stage cuja saída ninguém lê adiante, que é
+  o que um `apply_mask` apontado para `source` silenciosamente faz com tudo
+  acima dele; uma sequência de stages por pixel (`brightness_contrast`, `gamma`,
+  `threshold` sem Otsu) colapsada em um único `lut`, verificada contra os 256
+  valores de entrada em vez de amostrada.
+* **amostrado (sampled)** — nenhum contraexemplo foi encontrado em dezesseis
+  quadros. Isso é falseamento, não prova, e o tamanho da amostra não é
+  formalidade: na cadeia contra a qual isto foi construído, um stage parecia
+  redundante com quatro quadros e era comprovadamente essencial com oito.
+
+Por isso nada é aplicado sozinho. Remoções puras já vêm marcadas; uma fusão não,
+porque trocar dois stages nomeados por uma tabela de 256 entradas é uma cadeia
+mais direta de executar e mais obscura de ler. Desmarque o que não quiser e
+pressione OK.
+
+Mais uma verificação acontece então, e ela não é redundante: **achados que valem
+isoladamente não precisam valer juntos.** Dado `gray`, `gray`, `threshold`,
+qualquer um dos dois greys pode sair — o primeiro porque o segundo ainda
+converte, o segundo porque o primeiro já converteu — e tirar os dois deixa o
+threshold olhando para um quadro colorido. Marcar uma combinação que não
+sobrevive rende uma linha âmbar e o diálogo continua aberto.
+
+Uma cadeia com estado — qualquer coisa com o ponto âmbar — é amostrada a partir
+de uma sequência contígua de quadros em vez de espalhados, porque um modelo de
+fundo que recebe seis quadros sem relação não viu o histórico do qual sua saída
+depende.
+
+A busca só olha um movimento à frente. Um stage que se torna removível *porque*
+outro saiu é encontrado rodando Optimize de novo.
+
 ## Editando um parâmetro
 
 ![Como o formulário é gerado, e como botões ao vivo se distinguem dos de construção](../assets/gui-params.svg)

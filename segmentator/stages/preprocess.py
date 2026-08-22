@@ -134,6 +134,27 @@ class Gamma:
         ctx.image = cv2.LUT(ctx.image, gamma_lut(self.value))
 
 
+@register("stage", "lut")
+class Lut:
+    """Map every pixel value through a 256-entry table.
+
+    Mostly written by :mod:`segmentator.optimize`, which collapses a run of
+    per-pixel stages into one of these — the table is the run, evaluated over
+    every value it can be handed, so the fused stage is not an approximation of
+    the stages it replaces. Hand-writing one is fine too; ``table: null`` is the
+    identity curve.
+    """
+
+    def __init__(self, table: list[int] | None = None):
+        values = np.arange(256) if table is None else np.asarray(table)
+        if values.size != 256:
+            raise ValueError(f"stage 'lut' needs a 256-entry table, got {values.size}")
+        self._table = np.clip(values, 0, 255).astype(np.uint8)
+
+    def apply(self, ctx: Ctx) -> None:
+        ctx.image = cv2.LUT(ctx.image, self._table)
+
+
 @register("stage", "median_blur")
 class MedianBlur:
     """Median smoothing. ``ksize`` is clamped to the nearest odd value."""

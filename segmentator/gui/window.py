@@ -53,6 +53,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
+    QProgressDialog,
     QPushButton,
     QScrollArea,
     QSlider,
@@ -80,8 +81,10 @@ from segmentator.gui.spec import (
     params,
     rebuild_params,
 )
+from segmentator.gui.optimize_worker import OptimizeWorker
 from segmentator.gui.style import PALETTE, label_style
 from segmentator.gui.worker import PreviewWorker, preview_key
+from segmentator.optimize import Finding, check, observable
 from segmentator.pipeline import registered
 
 SINK_IMAGE_TYPES = ("display", "ffmpeg", "image", "crops")
@@ -410,6 +413,79 @@ class AddDialog(QDialog):
         return None
 
 
+class OptimizeDialog(QDialog):
+    """Review what the optimizer found, and pick what to keep.
+
+    Nothing is applied without going through here. The editor has no undo stack,
+    and half of what this dialog lists rests on a finite sample of frames rather
+    than a proof — so the checkbox is the safety, and what each row has to say
+    for itself is the point of the column that spells out the basis.
+
+    Pure deletions start ticked. A fusion does not: swapping two named stages for
+    a 256-entry table is a straighter chain to execute and a muddier one to read,
+    and that trade is the user's to make, not this dialog's.
+    """
+
+    BASIS_TEXT = {
+        "identity": "provable — the parameters make it a passthrough",
+        "dataflow": "provable — nothing downstream reads it",
+        "exhaustive": "provable — checked on all 256 input values",
+        "sampled": "sampled — no counterexample found",
+    }
+
+    def __init__(self, parent: QWidget, findings: list[Finding]) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Optimize")
+        self.setFixedWidth(720)
+        self._boxes: list[tuple[QCheckBox, Finding]] = []
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(f"{len(findings)} change(s) that leave every sink output identical:"))
+
+        area = QScrollArea()
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        body = QWidget()
+        rows = QVBoxLayout(body)
+        for finding in findings:
+            box = QCheckBox(self._title(finding))
+            box.setChecked(finding.basis != "exhaustive")
+            rows.addWidget(box)
+            note = QLabel(f"      {self.BASIS_TEXT.get(finding.basis, finding.basis)} · {finding.detail}")
+            note.setStyleSheet(f"color: {PALETTE['muted']};")
+            rows.addWidget(note)
+            self._boxes.append((box, finding))
+        rows.addStretch(1)
+        area.setWidget(body)
+        layout.addWidget(area, 1)
+
+        self.warning = QLabel("")
+        self.warning.setWordWrap(True)
+        self.warning.setStyleSheet(f"color: {PALETTE['amber_ink']}; font-weight: 600;")
+        layout.addWidget(self.warning)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.resize(720, min(560, 140 + 52 * len(findings)))
+
+    @staticmethod
+    def _title(finding: Finding) -> str:
+        where = ", ".join(str(position + 1) for position in finding.positions)
+        saved = f"  −{finding.saved_ms:.1f} ms" if finding.saved_ms >= 0.05 else ""
+        return f"{finding.label}   (stage {where}){saved}"
+
+    def selected(self) -> list[Finding]:
+        return [finding for box, finding in self._boxes if box.isChecked()]
+
+    def warn(self, text: str) -> None:
+        """Say why a selection was refused, without closing the dialog."""
+        self.warning.setText(text)
+
+
 def move(seq: Any, src: int, dst: int) -> None:
     """Move one item of a ruamel sequence, taking its comment with it.
 
@@ -579,6 +655,7 @@ class MainWindow(QMainWindow):
         self.path = Path(config)
         self.cfg = spec_module.load(self.path)
         self.worker: PreviewWorker | None = None
+        self._optimizer: OptimizeWorker | None = None
         self._images: dict[str, QPixmap] = {}
         self._current = "source"
         self._measured: tuple[int, dict, dict] = (0, {}, {})
@@ -733,6 +810,8 @@ class MainWindow(QMainWindow):
         edit.addSeparator()
         action(edit, "Move &up", lambda: self.shift(-1), "Ctrl+Up")
         action(edit, "Move &down", lambda: self.shift(1), "Ctrl+Down")
+        edit.addSeparator()
+        action(edit, "&Optimize…", self.optimize)
 
     def _theme_button(self) -> None:
         """Day/night, in the status bar.
@@ -920,6 +999,95 @@ class MainWindow(QMainWindow):
 
     def on_edited(self) -> None:
         self.reload_lists()
+        self.push()
+
+    # --- optimize ------------------------------------------------------------ #
+
+    def optimize(self) -> None:
+        """Analyse the chain and offer to remove what makes no difference."""
+        if not len(self.specs("stage")):
+            self.statusBar().showMessage("nothing to optimize: no stages", 4000)
+            return
+        if self._optimizer is not None:
+            return  # one at a time; the dialog below is modal anyway
+
+        worker = OptimizeWorker(self.cfg)
+        # A busy range (0, 0) until the search reports a candidate count — the
+        # frame sampling in front of it has no progress to report and, on a 1080p
+        # source, is a second or two of decoding on its own.
+        waiting = QProgressDialog("Analysing the chain…", "Cancel", 0, 0, self)
+        waiting.setWindowTitle("Optimize")
+        waiting.setWindowModality(Qt.WindowModality.WindowModal)
+        waiting.setMinimumDuration(0)
+        waiting.canceled.connect(worker.cancel)
+
+        def on_progress(done: int, total: int, label: str) -> None:
+            waiting.setMaximum(total)
+            waiting.setValue(done)
+            waiting.setLabelText(f"Trying: {label}" if total else label)
+
+        worker.progress.connect(on_progress)
+        worker.done.connect(lambda findings: self.on_optimized(waiting, findings))
+        worker.failed.connect(lambda text: self.on_optimize_failed(waiting, text))
+        self._optimizer = worker
+        worker.start()
+
+    def on_optimize_failed(self, waiting: QProgressDialog, text: str) -> None:
+        waiting.close()
+        self._optimizer = None
+        QMessageBox.critical(self, "optimize", text)
+
+    def on_optimized(self, waiting: QProgressDialog, findings: list[Finding]) -> None:
+        """Review the findings, re-check whatever was ticked, and apply it."""
+        waiting.close()
+        worker, self._optimizer = self._optimizer, None
+        if worker is None:
+            return
+        try:
+            if not findings:
+                self.statusBar().showMessage("optimize: nothing to simplify", 5000)
+                return
+            specs = [dict(entry) for entry in self.specs("stage")]
+            observed = observable([dict(entry) for entry in self.specs("sink")])
+            dialog = OptimizeDialog(self, findings)
+            while dialog.exec() == QDialog.DialogCode.Accepted:
+                chosen = dialog.selected()
+                if not chosen:
+                    return
+                # Each finding was judged on its own, so a selection has to be
+                # judged again: two stages can each be removable alone and not
+                # together — drop both greys from `gray, gray, threshold` and the
+                # threshold is suddenly looking at a colour frame.
+                if check(specs, chosen, worker.frames, observed):
+                    self.apply_optimizations(chosen)
+                    saved = sum(f.saved_ms for f in chosen)
+                    self.statusBar().showMessage(
+                        f"optimize: applied {len(chosen)} change(s), about {saved:.0f} ms/frame", 6000
+                    )
+                    return
+                dialog.warn(
+                    "Those changes are not equivalent when taken together, though each one is "
+                    "on its own. Untick one and try again."
+                )
+        finally:
+            worker.release()
+
+    def apply_optimizations(self, findings: list[Finding]) -> None:
+        """Rewrite the stage list in the ruamel document, bottom-up.
+
+        Row by row rather than replacing the sequence: ruamel hangs each comment
+        off its item's index, and assigning a fresh list drops every one of them,
+        which would show up as the whole file rewritten on the next save.
+        """
+        entries = self.specs("stage")
+        for finding in sorted(findings, key=lambda f: f.positions[0], reverse=True):
+            first, last = finding.positions[0], finding.positions[-1]
+            for position in range(last, first - 1, -1):
+                del entries[position]
+            for offset, replacement in enumerate(finding.replacement):
+                entries.insert(first + offset, spec_module.as_spec(replacement))
+        self.reload_lists()
+        self.select("stage", min(findings[0].positions[0], len(entries) - 1))
         self.push()
 
     # --- preview tabs -------------------------------------------------------- #
