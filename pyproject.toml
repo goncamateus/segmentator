@@ -1,6 +1,6 @@
 [project]
 name = "segmentator"
-version = "0.3.0"
+version = "0.4.0"
 description = "Configuration-driven image and video segmentation pipelines"
 readme = "README.md"
 requires-python = ">=3.13"
