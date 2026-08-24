@@ -5,9 +5,9 @@ YAML, so trying a different preprocessing chain, detector or background model is
 a config edit, not a code edit.
 
 ```bash
-uv run segmentator configs/baseline.yaml
-uv run segmentator configs/structure.yaml
-uv run segmentator configs/mog2_contours.yaml --video inputs/gasvid1.mp4 --max-frames 300
+uv run segmentator examples/baseline.yaml
+uv run segmentator examples/structure.yaml
+uv run segmentator examples/mog2_contours.yaml --video inputs/gasvid1.mp4 --max-frames 300
 ```
 
 `--video` and `--output` override the source path and the first ffmpeg sink path
@@ -18,7 +18,7 @@ stage and every sink:
 
 ```bash
 uv sync --extra gui
-uv run segmentator-gui configs/motion.yaml
+uv run segmentator-gui examples/motion.yaml
 ```
 
 Part of the [goncanalyser](https://github.com/goncamateus/goncanalyser) suite.

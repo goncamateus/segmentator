@@ -81,7 +81,7 @@ algorithms is one line. Then `motion_heat(window)` accumulates,
 
 > `gain` on the flow stages is a **calibration constant, not a derived one**. At the
 > default 32, 8 px/frame reads as full scale; a plume drifting under 1 px/frame needs
-> it several times higher or a morphological open will erase it. `configs/motion.yaml`
+> it several times higher or a morphological open will erase it. `examples/motion.yaml`
 > uses 160 for exactly that reason.
 
 ## Sinks

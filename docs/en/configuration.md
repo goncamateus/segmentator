@@ -129,8 +129,8 @@ means when two branches both write `contours`.
 ## Running it
 
 ```bash
-uv run segmentator configs/baseline.yaml
-uv run segmentator configs/mog2_contours.yaml --video inputs/gasvid1.mp4 --max-frames 300
+uv run segmentator examples/baseline.yaml
+uv run segmentator examples/mog2_contours.yaml --video inputs/gasvid1.mp4 --max-frames 300
 ```
 
 `--video` and `--output` override the source path and the first ffmpeg sink path

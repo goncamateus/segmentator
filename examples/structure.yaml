@@ -1,0 +1,38 @@
+# Geometric analysis of a still image: edges, lines and contours, each drawn on
+# its own copy of the original frame and written out as a separate picture.
+# No video anywhere in this config — `image` in, `image` out.
+name: structure
+
+source:
+  type: image
+  path: inputs/frame.png
+
+stages:
+  - {type: gray, name: grey}
+
+  # Edges, tapped so a sink can write the raw map before anything is drawn on it.
+  - {type: canny, lo: 80, hi: 180, name: edges}
+
+  # Hough builds its own Canny internally, so it reads the grey frame, not the
+  # edge map above — and it draws onto the untouched colour frame.
+  - {type: hough_lines, threshold: 60, min_len: 40, max_gap: 8, draw_on: source, name: lines}
+
+  # Back to the edge map to find shapes: `hough_lines` left a colour overlay in
+  # the working frame, and `select` is what reaches past it.
+  - {type: select, input: edges}
+
+  # `draw_on: image` puts the outlines on the edges themselves rather than on
+  # the photo, which is how you check that the contour filter is looking at what
+  # you think it is.
+  - {type: threshold, value: 1, mode: binary}
+  - {type: contours, min_area: 40, mode: tree, boxes: true, draw_on: image}
+
+sinks:
+  - {type: image, path: outputs/structure/edges.png, input: edges}
+  - {type: image, path: outputs/structure/lines.png, input: lines}
+  - {type: image, path: outputs/structure/contours.png}
+
+  # Contour geometry as data, and as pixels.
+  - {type: csv, dir: outputs/structure}
+  - {type: json, path: outputs/structure/metrics.jsonl}
+  - {type: crops, dir: outputs/structure/crops, kind: contours, input: source, pad: 4}

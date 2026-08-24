@@ -1,0 +1,30 @@
+# Adaptive MOG2 subtraction with contrast boosting, drawn as contours over the
+# original colour frame and encoded to disk. No display window, no static mask.
+name: mog2_contours
+
+source:
+  type: video
+  path: inputs/gasvid.mp4
+
+stages:
+  - {type: gray}
+
+  # CLAHE lifts the low-contrast plume before it reaches the subtractor.
+  - {type: clahe, clip_limit: 3.0, tile_grid: [8, 8]}
+  - {type: gaussian_blur, ksize: 9, sigma: 0}
+
+  # Adaptive model: unlike mean_background it keeps learning, so slow lighting
+  # drift is absorbed instead of showing up as signal.
+  # `name` taps this stage's output so a sink below can write the raw mask.
+  - {type: mog2, history: 300, var_threshold: 24, detect_shadows: false, name: fg_mask}
+
+  # Drop speckle before contour extraction.
+  - {type: morphology, op: open, ksize: 5, iterations: 1}
+
+  - {type: contours, min_area: 20.0, color: [161, 177, 247], thickness: 2, draw_on: source}
+
+sinks:
+  # `input` picks what a sink writes: the chain's final image (default), `source`,
+  # or any stage given a `name`.
+  - {type: ffmpeg, path: outputs/mog2.mp4}
+  - {type: ffmpeg, path: outputs/mog2_fg.mp4, input: fg_mask}

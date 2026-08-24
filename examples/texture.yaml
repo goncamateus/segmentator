@@ -1,0 +1,27 @@
+# Texture and colour description of a still image.
+#
+# HOG is the expensive operator in the suite — 150-300 ms on a 640x512 frame —
+# which is fine for a batch and too slow for a live preview.
+name: texture
+
+source:
+  type: image
+  path: inputs/frame.png
+
+stages:
+  # Colour statistics first, while the frame is still colour — a LAB histogram of
+  # a greyscale image describes nothing. `histogram` leaves the frame alone and
+  # publishes its plot to the side, so the chain carries on with the real image.
+  - {type: histogram, space: lab}
+
+  - {type: gray}
+  - {type: clahe, clip_limit: 2.0}   # lift local contrast before describing it
+
+  - {type: lbp, points: 8, radius: 1, method: uniform, name: lbp}
+  - {type: hog, orientations: 9, cell: 8, block: 2, name: hog}
+
+sinks:
+  - {type: image, path: outputs/texture/lbp.png, input: lbp}
+  - {type: image, path: outputs/texture/hog.png, input: hog}
+  - {type: image, path: outputs/texture/histogram.png, input: histogram}
+  - {type: json, path: outputs/texture/metrics.jsonl}

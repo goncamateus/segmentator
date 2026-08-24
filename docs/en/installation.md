@@ -8,7 +8,7 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.13+.
 git clone https://github.com/goncamateus/segmentator.git
 cd segmentator
 uv sync                 # CLI only
-uv run segmentator configs/baseline.yaml
+uv run segmentator examples/baseline.yaml
 ```
 
 The `ffmpeg` sink shells out to the `ffmpeg` binary — install it separately
@@ -21,7 +21,7 @@ pulls PyQt6 in:
 
 ```bash
 uv sync --extra gui
-uv run segmentator-gui configs/motion.yaml
+uv run segmentator-gui examples/motion.yaml
 ```
 
 Run the test suite with:
@@ -42,7 +42,7 @@ double-clickable app.
 
 ```bash
 chmod +x segmentator-*.AppImage
-./segmentator-*.AppImage configs/motion.yaml
+./segmentator-*.AppImage examples/motion.yaml
 ```
 
 No installation step; it runs in place.

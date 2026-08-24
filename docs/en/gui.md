@@ -7,7 +7,7 @@ instead of over a batch.
 
 ```bash
 uv sync --extra gui
-uv run segmentator-gui configs/motion.yaml
+uv run segmentator-gui examples/motion.yaml
 uv run segmentator-gui                       # opens the launcher
 ```
 
@@ -277,7 +277,7 @@ The millisecond figure is the whole cost of the edit, replay included.
 The editor does not. `File ▸ Copy run command` puts
 
 ```bash
-uv run segmentator configs/motion.yaml
+uv run segmentator examples/motion.yaml
 ```
 
 on the clipboard, and the run happens where runs belong — in a terminal, with a
