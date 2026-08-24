@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import (
 
 from segmentator.gui import style
 
-VIDEO_FILTER = "Video (*.mp4 *.avi *.mov *.mkv);;All files (*)"
+OPEN_FILTER = "Image/Video (*.jpg *.jpeg *.png *.mp4 *.avi *.mov *.mkv);;All files (*)"
 CONFIG_FILTER = "YAML (*.yaml *.yml)"
 
 # Half the main window's 1280, the same reasoning `AddDialog` uses for its width;
@@ -236,7 +236,7 @@ def choose(parent: QWidget | None = None) -> Path | None:
         if window.exec() != QDialog.DialogCode.Accepted:
             return None
         if window.picked == "new":
-            video, _ = QFileDialog.getOpenFileName(parent, "Video for the new project", "", VIDEO_FILTER)
+            video, _ = QFileDialog.getOpenFileName(parent, "Video for the new project", "", OPEN_FILTER)
             if video:
                 return starter_config(Path(video))
         else:
