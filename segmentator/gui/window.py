@@ -71,6 +71,7 @@ from PyQt6.QtWidgets import (
 
 from segmentator.gui import spec as spec_module
 from segmentator.gui import style
+from segmentator.gui.document_controller import DocumentController
 from segmentator.gui.spec import (
     CHANNEL_PARAMS,
     CHOICES,
@@ -486,25 +487,6 @@ class OptimizeDialog(QDialog):
         self.warning.setText(text)
 
 
-def move(seq: Any, src: int, dst: int) -> None:
-    """Move one item of a ruamel sequence, taking its comment with it.
-
-    ponytail: a standalone comment block *between* two items belongs to whichever
-    item ruamel attached it to, so reordering can leave one behind. Reordering a
-    commented stage is rare enough to not be worth a comment-reparenting pass.
-    """
-    comments = {index: seq.ca.items.get(index) for index in range(len(seq))}
-    item = seq.pop(src)
-    moved = comments.pop(src, None)
-    order = [comments[index] for index in sorted(comments)]
-    seq.insert(dst, item)
-    order.insert(dst, moved)
-    seq.ca.items.clear()
-    for index, comment in enumerate(order):
-        if comment is not None:
-            seq.ca.items[index] = comment
-
-
 class ParamForm(QWidget):
     """The parameter rows for one component, generated from its signature.
 
@@ -653,7 +635,7 @@ class MainWindow(QMainWindow):
     def __init__(self, config: str | Path):
         super().__init__()
         self.path = Path(config)
-        self.cfg = spec_module.load(self.path)
+        self.document = DocumentController(spec_module.load(self.path))
         self.worker: PreviewWorker | None = None
         self._optimizer: OptimizeWorker | None = None
         self._images: dict[str, QPixmap] = {}
@@ -862,62 +844,35 @@ class MainWindow(QMainWindow):
         self.on_measured(*self._measured)
 
     # --- the document ------------------------------------------------------- #
+    #
+    # All of this — the spec-list CRUD, label/marks/default-sink lookups — is
+    # :class:`~segmentator.gui.document_controller.DocumentController`'s job.
+    # What is left here is Qt: turning the controller's plain-data answers into
+    # widget state, and the handful of thin pass-throughs (`cfg`, `specs`,
+    # `image_keys`) other classes in this module already call by those names.
+
+    @property
+    def cfg(self) -> Any:
+        return self.document.cfg
 
     def specs(self, kind: str) -> Any:
-        key = "stages" if kind == "stage" else "sinks"
-        if key not in self.cfg:
-            self.cfg[key] = []
-        return self.cfg[key]
+        return self.document.specs(kind)
 
     def image_keys(self, upto: int | None = None) -> tuple[str, ...]:
-        """Everything an ``input:`` or ``draw_on:`` resolves to at this point.
-
-        A sink runs after the whole chain and sees all of it (``upto=None``). A
-        stage sees only what the stages above it already produced — offering a
-        name from below would write a config that raises on every frame.
-        """
-        entries = self.specs("stage")
-        above = entries if upto is None else entries[:upto]
-        names = [s.get("name") for s in above if s.get("name")]
-        published = [key for s in above for key in spec_module.PUBLISHES.get(s.get("type", ""), ())]
-        return ("image", "source", *names, *published)
+        return self.document.image_keys(upto)
 
     def reload_lists(self) -> None:
         for kind, widget in (("stage", self.stage_list), ("sink", self.sink_list)):
             row = widget.currentRow()
             widget.blockSignals(True)
             widget.clear()
-            for position, entry in enumerate(self.specs(kind)):
-                item = QListWidgetItem(self._label(kind, position, entry))
-                item.setData(Qt.ItemDataRole.UserRole, self._marks(kind, entry))
+            for position, entry in enumerate(self.document.specs(kind)):
+                item = QListWidgetItem(self.document.label(kind, position, entry))
+                item.setData(Qt.ItemDataRole.UserRole, self.document.marks(kind, entry))
                 widget.addItem(item)
             widget.setCurrentRow(min(row, widget.count() - 1))
             widget.blockSignals(False)
         self.reload_tabs()
-
-    def _label(self, kind: str, position: int, entry: dict[str, Any]) -> str:
-        """The row's text. The tap and the state dot are drawn, not written."""
-        type_name = entry.get("type", "?")
-        if kind == "sink":
-            return f"{type_name}  ← {entry.get('input', self._sink_default(type_name))}"
-        return f"{position + 1}.  {type_name}"
-
-    def _marks(self, kind: str, entry: dict[str, Any]) -> dict[str, Any]:
-        """What :class:`RowDelegate` paints beside the label."""
-        type_name = entry.get("type", "?")
-        return {
-            "kind": kind,
-            "type": type_name,
-            "name": entry.get("name") if kind == "stage" else None,
-            "stateful": kind == "stage" and type_name in STATEFUL,
-        }
-
-    def _sink_default(self, type_name: str) -> str:
-        if type_name == "csv":
-            return "rows"
-        if type_name == "json":
-            return "metrics"
-        return "source" if type_name == "crops" else "image"
 
     # --- edits -------------------------------------------------------------- #
 
@@ -927,7 +882,7 @@ class MainWindow(QMainWindow):
             return
         widget = self.stage_list if kind == "stage" else self.sink_list
         at = widget.currentRow() + 1 if widget.currentRow() >= 0 else len(self.specs(kind))
-        self.specs(kind).insert(at, spec_module.new_spec(kind, name))
+        self.document.insert(kind, at, spec_module.new_spec(kind, name))
         self.reload_lists()
         self.select(kind, at)
         self.push()
@@ -937,7 +892,7 @@ class MainWindow(QMainWindow):
         row = widget.currentRow()
         if row < 0:
             return
-        del self.specs(kind)[row]
+        self.document.delete(kind, row)
         self.reload_lists()
         self.select(kind, min(row, len(self.specs(kind)) - 1))
         self.push()
@@ -967,14 +922,14 @@ class MainWindow(QMainWindow):
         target = row + delta
         if row < 0 or not 0 <= target < len(self.specs("stage")):
             return
-        move(self.specs("stage"), row, target)
+        self.document.move("stage", row, target)
         self.reload_lists()
         self.select("stage", target)
         self.push()
 
     def on_rows_moved(self, _parent, start: int, _end: int, _dest, row: int) -> None:
         """A drag inside the list. Qt reports the insert point *before* the removal."""
-        move(self.specs("stage"), start, row - 1 if row > start else row)
+        self.document.move("stage", start, row - 1 if row > start else row)
         self.reload_lists()
         self.push()
 
@@ -990,7 +945,7 @@ class MainWindow(QMainWindow):
         entries = self.specs("sink")
         if 0 <= row < len(entries):
             self.form.show_spec("sink", entries[row])
-            key = entries[row].get("input", self._sink_default(entries[row].get("type", "")))
+            key = entries[row].get("input", self.document.sink_default(entries[row].get("type", "")))
             index = next(
                 (i for i in range(self.tabs.count()) if self.tabs.tabData(i) == key), None
             )
@@ -1079,15 +1034,14 @@ class MainWindow(QMainWindow):
         off its item's index, and assigning a fresh list drops every one of them,
         which would show up as the whole file rewritten on the next save.
         """
-        entries = self.specs("stage")
         for finding in sorted(findings, key=lambda f: f.positions[0], reverse=True):
             first, last = finding.positions[0], finding.positions[-1]
             for position in range(last, first - 1, -1):
-                del entries[position]
+                self.document.delete("stage", position)
             for offset, replacement in enumerate(finding.replacement):
-                entries.insert(first + offset, spec_module.as_spec(replacement))
+                self.document.insert("stage", first + offset, spec_module.as_spec(replacement))
         self.reload_lists()
-        self.select("stage", min(findings[0].positions[0], len(entries) - 1))
+        self.select("stage", min(findings[0].positions[0], len(self.specs("stage")) - 1))
         self.push()
 
     # --- preview tabs -------------------------------------------------------- #
@@ -1102,7 +1056,7 @@ class MainWindow(QMainWindow):
             type_name = entry.get("type", "?")
             if type_name not in SINK_IMAGE_TYPES:
                 continue
-            key = entry.get("input", self._sink_default(type_name))
+            key = entry.get("input", self.document.sink_default(type_name))
             wanted.append((f"{type_name} ← {key}", key))
 
         keys = [key for _, key in wanted]
@@ -1231,7 +1185,7 @@ class MainWindow(QMainWindow):
             return
         self.stop_worker()
         self.path = Path(path)
-        self.cfg = spec_module.load(self.path)
+        self.document = DocumentController(spec_module.load(self.path))
         self.setWindowTitle(f"segmentator — {self.path.name}")
         self.reload_lists()
         self.start_worker()
