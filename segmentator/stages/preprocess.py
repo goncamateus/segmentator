@@ -18,7 +18,7 @@ from segmentator.ops.common import (
     require_gray,
     to_bgr,
 )
-from segmentator.pipeline import Ctx, frame_for, register
+from segmentator.pipeline import Ctx, StageInfo, frame_for, register
 
 _THRESHOLD_MODES = {
     "binary": cv2.THRESH_BINARY,
@@ -53,7 +53,7 @@ _COLOR_CODES = {
 
 
 @register("stage", "gray")
-class Gray:
+class Gray(StageInfo):
     """Convert BGR to grayscale. No-op if the frame is already single-channel."""
 
     def apply(self, ctx: Ctx) -> None:
@@ -62,7 +62,7 @@ class Gray:
 
 
 @register("stage", "colorspace")
-class ColorSpace:
+class ColorSpace(StageInfo):
     """Convert the frame to another colour space, e.g. ``to: hsv`` or ``to: lab``.
 
     Args:
@@ -86,13 +86,15 @@ class ColorSpace:
 
 
 @register("stage", "brightness_contrast")
-class BrightnessContrast:
+class BrightnessContrast(StageInfo):
     """Additive offset and multiplicative gain, in one pass.
 
     Args:
         brightness: Added to every channel, roughly -100..100.
         contrast: Gain, ``1.0`` is identity.
     """
+
+    POINT_OP = True
 
     def __init__(self, brightness: int = 0, contrast: float = 1.0):
         self.brightness = brightness
@@ -103,8 +105,10 @@ class BrightnessContrast:
 
 
 @register("stage", "saturation")
-class Saturation:
+class Saturation(StageInfo):
     """Scale the HSV saturation channel. ``gain: 1.0`` is identity. BGR only."""
+
+    IDENTITY_PARAMS = {"gain": (1.0, 1)}
 
     def __init__(self, gain: float = 1.0):
         self.gain = gain
@@ -122,8 +126,11 @@ class Saturation:
 
 
 @register("stage", "gamma")
-class Gamma:
+class Gamma(StageInfo):
     """Gamma correction through a cached 256-entry LUT. ``<1`` darkens, ``>1`` lifts."""
+
+    POINT_OP = True
+    IDENTITY_PARAMS = {"value": (1.0, 1)}
 
     def __init__(self, value: float = 1.0):
         if value <= 0:
@@ -135,7 +142,7 @@ class Gamma:
 
 
 @register("stage", "lut")
-class Lut:
+class Lut(StageInfo):
     """Map every pixel value through a 256-entry table.
 
     Mostly written by :mod:`segmentator.optimize`, which collapses a run of
@@ -156,8 +163,10 @@ class Lut:
 
 
 @register("stage", "median_blur")
-class MedianBlur:
+class MedianBlur(StageInfo):
     """Median smoothing. ``ksize`` is clamped to the nearest odd value."""
+
+    IDENTITY_PARAMS = {"ksize": (0, 1)}
 
     def __init__(self, ksize: int = 7):
         self.ksize = odd_kernel(ksize)
@@ -168,8 +177,10 @@ class MedianBlur:
 
 
 @register("stage", "gaussian_blur")
-class GaussianBlur:
+class GaussianBlur(StageInfo):
     """Gaussian smoothing. ``ksize`` is clamped odd; ``sigma=0`` derives it from ksize."""
+
+    IDENTITY_PARAMS = {"ksize": (0, 1)}
 
     def __init__(self, ksize: int = 5, sigma: float = 0.0):
         self.ksize = odd_kernel(ksize)
@@ -181,7 +192,7 @@ class GaussianBlur:
 
 
 @register("stage", "clahe")
-class Clahe:
+class Clahe(StageInfo):
     """Contrast-limited adaptive histogram equalisation on a grayscale frame."""
 
     def __init__(self, clip_limit: float = 2.0, tile_grid: tuple[int, int] = (8, 8)):
@@ -193,8 +204,10 @@ class Clahe:
 
 
 @register("stage", "morphology")
-class Morphology:
+class Morphology(StageInfo):
     """Morphological op — ``open``, ``close``, ``erode``, ``dilate``, ``gradient``, ..."""
+
+    IDENTITY_PARAMS = {"iterations": (0,)}
 
     def __init__(self, op: str = "open", ksize: int = 3, iterations: int = 1):
         if op not in _MORPH_OPS:
@@ -210,7 +223,7 @@ class Morphology:
 
 
 @register("stage", "resize")
-class Resize:
+class Resize(StageInfo):
     """Resize to ``size: [width, height]``."""
 
     def __init__(self, size: tuple[int, int]):
@@ -221,7 +234,7 @@ class Resize:
 
 
 @register("stage", "threshold")
-class Threshold:
+class Threshold(StageInfo):
     """Threshold the frame.
 
     Args:
@@ -231,6 +244,12 @@ class Threshold:
             ``tozero_inv`` at a high level clips saturated pixels away.
         otsu: Derive ``value`` automatically per frame (grayscale only).
     """
+
+    # True in general — but with otsu: true the level comes from the whole
+    # frame's histogram, not the pixel alone. That per-instance exception is
+    # still the caller's concern to check (segmentator.optimize._is_point_op
+    # does today), same as before this attribute existed.
+    POINT_OP = True
 
     def __init__(
         self, value: int = 127, mode: str = "binary", maxval: int = 255, otsu: bool = False
@@ -251,7 +270,7 @@ class Threshold:
 
 
 @register("stage", "adaptive_threshold")
-class AdaptiveThreshold:
+class AdaptiveThreshold(StageInfo):
     """Per-neighbourhood threshold, for frames whose lighting is not uniform.
 
     Args:
@@ -312,7 +331,7 @@ def roi_rect(shape, x: int, y: int, w: int, h: int) -> tuple[int, int, int, int]
 
 
 @register("stage", "roi")
-class Roi:
+class Roi(StageInfo):
     """Crop to a rectangle, so everything downstream measures only that region.
 
     The crop has to happen *before* the operators that read it, not after: Otsu
@@ -325,6 +344,10 @@ class Roi:
     A copy, never a view — an overlay drawn on the region must not write through
     into the full frame kept behind it.
     """
+
+    # Not in PUBLISHES: the rectangle is a tuple, not an image, so nothing a
+    # preview could resolve through frame_for().
+    WRITES = ("store:roi",)
 
     def __init__(self, x: int = 0, y: int = 0, w: int = 0, h: int = 0):
         self.rect = (x, y, w, h)
@@ -343,7 +366,7 @@ Y_KEYS = ("y", "y1", "y2")
 
 
 @register("stage", "paste_roi")
-class PasteRoi:
+class PasteRoi(StageInfo):
     """Put the analysed region back into the full frame, and fix up the rows.
 
     Compositing the region first and pasting after is what avoids translating
@@ -357,6 +380,8 @@ class PasteRoi:
         draw_on: ``source`` (the untouched frame), ``image`` or a named tap to
             paste into — resolved the same way as any other stage's ``draw_on``.
     """
+
+    READS = ("store:roi",)
 
     def __init__(self, border: bool = True, draw_on: str = "source"):
         self.border = border
@@ -387,7 +412,7 @@ class PasteRoi:
 
 
 @register("stage", "select")
-class Select:
+class Select(StageInfo):
     """Rebind ``ctx.image`` to an earlier image, so the chain can branch.
 
     A drawing stage consumes the working frame — ``hough_lines`` with

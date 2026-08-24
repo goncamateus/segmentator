@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from segmentator.gui import spec as spec_module
-from segmentator.gui.spec import STATEFUL, params, rebuild_params
+from segmentator.gui.spec import CHANNEL_PARAMS, PUBLISHES, STATEFUL, params, rebuild_params
 from segmentator.pipeline import registered
 
 PyQt6 = pytest.importorskip("PyQt6")
@@ -91,6 +91,26 @@ def test_spec_demo():
 
 def test_every_stateful_name_is_a_real_stage():
     assert STATEFUL <= set(registered("stage"))
+
+
+def test_stage_info_agrees_with_gui_only_tables():
+    """The class-level attributes (issue #6) agree with this module's own tables.
+
+    STATEFUL, PUBLISHES and CHANNEL_PARAMS live only here (not in optimize.py),
+    so their cross-check against the per-class StageInfo attributes belongs in
+    this GUI-gated file rather than in tests/test_optimize.py, which must stay
+    importable with no optional dependency installed.
+    """
+    from segmentator.pipeline import component
+
+    for name in STATEFUL:
+        assert component("stage", name).STATEFUL is True, name
+
+    for name, keys in PUBLISHES.items():
+        assert component("stage", name).PUBLISHES == keys, name
+
+    for name, params_ in CHANNEL_PARAMS.items():
+        assert component("stage", name).CHANNEL_PARAMS == params_, name
 
 
 def test_a_stage_without_an_init_has_no_parameters():

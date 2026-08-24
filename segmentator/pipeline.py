@@ -91,6 +91,71 @@ class Stage(Protocol):
         """Transform ``ctx.image`` in place on the context (rebinding, not mutating)."""
 
 
+class StageInfo:
+    """Class-level self-description every registered stage class exposes.
+
+    A stage overrides only what differs from the defaults below, which
+    describe the common case: an ordinary per-frame, stateless stage that
+    touches nothing but ``ctx.image``. Read this off the class — via
+    :func:`component`, e.g. ``component("stage", "canny").WRITES`` — rather
+    than a hand-maintained table elsewhere, so a stage's behavioural contract
+    lives in exactly one place.
+
+    Precedent: ``StaticMask.RECONSTRUCT`` in
+    :mod:`segmentator.stages.mask` is the same idea already, one attribute
+    early — a plain class attribute the editor reads instead of asking the
+    stage a question at runtime. These attributes generalise that to every
+    registered stage.
+
+    As of this writing these attributes are additive: :mod:`segmentator.optimize`
+    and :mod:`segmentator.gui.spec` still carry their own hand-maintained tables
+    (``WRITES``/``READS``/``POINT_OPS``/``IDENTITY`` and
+    ``STATEFUL``/``PUBLISHES``/``CHANNEL_PARAMS`` respectively) covering the same
+    ground; nothing here has replaced them yet.
+
+    Attributes:
+        STATEFUL: Carries something across frames on the instance (a
+            background model, a previous frame, an accumulator) rather than
+            being a pure function of the current ``ctx``.
+        PUBLISHES: ``ctx.store`` keys this stage writes that hold an *image* —
+            i.e. resolvable through :func:`frame_for` by a later stage's
+            ``input``/``mask``/``draw_on`` or a sink's ``input:``.
+        CHANNEL_PARAMS: Constructor parameter names that are a per-channel
+            setting (e.g. ``color_select``'s ``ch0``/``ch1``/``ch2``), so a
+            caller that also knows the colour space can label each with its
+            own channel letter instead of the generic parameter name.
+        READS: Qualified ``store:``/``metrics:``/``rows:`` keys this stage
+            reads that are **not** already visible as one of its own
+            constructor parameters — an ``input``/``mask``/``draw_on``-style
+            parameter already names what it reads; this is for implicit
+            reads beyond that (e.g. ``mean_background`` reading
+            ``store:mask`` without a parameter naming it).
+        WRITES: Qualified ``store:``/``metrics:``/``rows:`` keys this stage
+            writes, besides ``ctx.image`` itself. ``"metrics:*"`` marks a
+            data- or config-dependent key set that cannot be written down in
+            full (e.g. ``histogram`` names its metrics after the chosen
+            colour space).
+        POINT_OP: The output pixel is a function of the corresponding input
+            pixel alone, so a run of these can be losslessly fused into one
+            lookup table. Only ``True`` for stages verified exhaustively over
+            all 256 input values (``brightness_contrast``, ``gamma``,
+            ``threshold``) — an instance-level exception (``threshold`` with
+            ``otsu: true``, which derives its level from the whole frame) is
+            still the caller's concern to check, exactly as it is today.
+        IDENTITY_PARAMS: Parameter name -> tuple of values that make this
+            stage a passthrough, read off the spec rather than a built
+            instance (e.g. ``{"iterations": (0,)}`` for ``morphology``).
+    """
+
+    STATEFUL: bool = False
+    PUBLISHES: tuple[str, ...] = ()
+    CHANNEL_PARAMS: tuple[str, ...] = ()
+    READS: tuple[str, ...] = ()
+    WRITES: tuple[str, ...] = ()
+    POINT_OP: bool = False
+    IDENTITY_PARAMS: dict[str, tuple] = {}
+
+
 @runtime_checkable
 class Source(Protocol):
     """A frame producer."""
@@ -146,6 +211,19 @@ def build(kind: str, spec: Mapping[str, Any]) -> Any:
 def registered(kind: str) -> list[str]:
     """Names available for a component kind — handy for error messages and docs."""
     return sorted(_REGISTRY[kind])
+
+
+def component(kind: str, name: str) -> type:
+    """The registered class behind a ``kind``/``name`` pair, unbuilt.
+
+    What a caller wants when it needs to read a class's own attributes — e.g. a
+    :class:`StageInfo` field — rather than an instance built from a spec, which
+    is what :func:`build` is for. Raises the same way :func:`build` does.
+    """
+    table = _REGISTRY[kind]
+    if name not in table:
+        raise KeyError(f"unknown {kind} {name!r}; known: {sorted(table)}")
+    return table[name]
 
 
 def _build_stages(specs: Sequence[Mapping[str, Any]]) -> list[Stage]:

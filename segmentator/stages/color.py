@@ -12,11 +12,11 @@ import numpy as np
 
 from segmentator.ops.color import SPACES, histograms, plot, select_mask
 from segmentator.ops.common import masked, to_bgr
-from segmentator.pipeline import Ctx, register
+from segmentator.pipeline import Ctx, StageInfo, register
 
 
 @register("stage", "histogram")
-class Histogram:
+class Histogram(StageInfo):
     """Per-channel histograms for ``bgr``, ``hsv`` or ``lab``.
 
     Leaves ``ctx.image`` alone by default and publishes the 512x256 plot as
@@ -27,6 +27,9 @@ class Histogram:
     Channel mean and standard deviation land in ``ctx.metrics``, computed from bin
     centres so they are mean *intensity* rather than mean count.
     """
+
+    PUBLISHES = ("histogram",)
+    WRITES = ("store:histogram", "metrics:*", "rows:histogram")
 
     def __init__(self, space: str = "bgr", replace: bool = False):
         if space not in SPACES:
@@ -56,7 +59,7 @@ class Histogram:
 
 
 @register("stage", "color_select")
-class ColorSelect:
+class ColorSelect(StageInfo):
     """Band-pass filter per channel in a chosen colour space.
 
     Converts to ``space``, keeps pixels whose value on every channel falls
@@ -79,6 +82,10 @@ class ColorSelect:
             these with the space's own channel letters (R/G/B, H/S/V, L/a/b).
         fill: Value written outside the band.
     """
+
+    PUBLISHES = ("mask",)
+    CHANNEL_PARAMS = ("ch0", "ch1", "ch2")
+    WRITES = ("store:mask",)
 
     def __init__(
         self,

@@ -12,11 +12,11 @@ import numpy as np
 
 from segmentator.background_model import BackgroundModel
 from segmentator.ops.common import masked, require_gray
-from segmentator.pipeline import Ctx, frame_for, register
+from segmentator.pipeline import Ctx, StageInfo, frame_for, register
 
 
 @register("stage", "static_mask")
-class StaticMask:
+class StaticMask(StageInfo):
     """Fit a fixed region-of-interest mask on the first frame it sees.
 
     Publishes the mask as ``ctx.store["mask"]`` on every frame; ``apply_mask`` and
@@ -33,6 +33,10 @@ class StaticMask:
     # know it must rebuild the stage rather than poke the live instance.
     RECONSTRUCT = ("threshold", "invert")
 
+    STATEFUL = True  # the fitted mask, cached on first apply()
+    PUBLISHES = ("mask",)
+    WRITES = ("store:mask",)
+
     def __init__(self, threshold: int = 127, invert: bool = True):
         self.threshold = threshold
         self.invert = invert
@@ -47,7 +51,7 @@ class StaticMask:
 
 
 @register("stage", "apply_mask")
-class ApplyMask:
+class ApplyMask(StageInfo):
     """Zero (or fill) everything outside a binary mask, in a chosen image.
 
     Both ``input`` and ``mask`` resolve the same way as a sink's ``input:`` or
@@ -82,7 +86,7 @@ _BUFFER_MODES = ("static", "circular")
 
 
 @register("stage", "mean_background")
-class MeanBackground:
+class MeanBackground(StageInfo):
     """Subtract the mean of the last ``n_frames`` — a background estimate.
 
     Args:
@@ -95,6 +99,9 @@ class MeanBackground:
             keeps a rolling window instead, so the estimate follows slow
             lighting drift.
     """
+
+    STATEFUL = True  # BackgroundModel accumulates across frames
+    READS = ("store:mask",)
 
     def __init__(self, n_frames: int = 60, use_mask: bool = True, buffer: str = "static"):
         if buffer not in _BUFFER_MODES:

@@ -326,3 +326,76 @@ def test_tables_only_name_stages_that_exist():
     assert set(optimize.IDENTITY) <= known
     assert set(optimize.POINT_OPS) <= known
     assert optimize._MAKES_GRAY <= known and optimize._MAKES_BGR <= known
+
+
+def test_every_stage_exposes_self_description():
+    """Every registered stage carries the class-level metadata from StageInfo.
+
+    Same "hand-maintained tables only name stages that exist" spirit as the
+    test above, flipped around: instead of checking a table's keys are real
+    stages, this checks every real stage carries the attributes meant to
+    replace those tables (issue #6 — additive only, the tables above still
+    stand until #15). Skips leading-underscore registrations the same way
+    gui/spec.py's _demo() does: those exist only for a test's own process
+    (tests/test_pipeline.py's "_test_tag") and were never meant to describe
+    themselves for the registry's consumers.
+    """
+    from segmentator.pipeline import StageInfo, component, registered
+
+    shipped = [name for name in registered("stage") if not name.startswith("_")]
+    assert shipped, "sanity: the registry should not be empty"
+
+    for name in shipped:
+        cls = component("stage", name)
+        assert issubclass(cls, StageInfo), f"{name}: does not inherit StageInfo"
+        assert isinstance(cls.STATEFUL, bool), f"{name}: STATEFUL must be a bool"
+        assert isinstance(cls.POINT_OP, bool), f"{name}: POINT_OP must be a bool"
+        for attr in ("PUBLISHES", "CHANNEL_PARAMS", "READS", "WRITES"):
+            value = getattr(cls, attr)
+            assert isinstance(value, tuple), f"{name}: {attr} must be a tuple"
+            assert all(isinstance(v, str) for v in value), f"{name}: {attr} entries must be str"
+        assert isinstance(cls.IDENTITY_PARAMS, dict), f"{name}: IDENTITY_PARAMS must be a dict"
+
+        # The cross-table invariant the parent issue calls out: a published
+        # (image-valued) store key must also be a key this stage says it
+        # writes to the store — checked directly on the class now, rather
+        # than across gui/spec.py's PUBLISHES and optimize.py's WRITES.
+        written_store_keys = {k.removeprefix("store:") for k in cls.WRITES if k.startswith("store:")}
+        missing = set(cls.PUBLISHES) - written_store_keys
+        assert not missing, f"{name}: {missing} in PUBLISHES but not in WRITES"
+
+
+def test_stage_info_agrees_with_the_hand_maintained_tables():
+    """Spot checks that the new per-class values agree with today's tables.
+
+    Not a full duplicate of the tables above — that would just be maintaining
+    two copies instead of one — but a handful of stages picked to cover every
+    kind of attribute (stateful, reads, writes, point op, identity), so a
+    copy-paste slip when porting a table entry onto its class is caught here
+    instead of silently drifting. Deliberately checks only against
+    optimize.py's own tables, not gui/spec.py's (STATEFUL, PUBLISHES,
+    CHANNEL_PARAMS) — this file must stay importable with no optional
+    dependency installed, and gui/spec.py needs ruamel.yaml.
+    """
+    from segmentator.pipeline import component
+
+    def cls(name):
+        return component("stage", name)
+
+    assert cls("mog2").STATEFUL is True
+    assert cls("gray").STATEFUL is False
+
+    assert cls("mean_background").READS == optimize.READS["mean_background"]
+    assert cls("paste_roi").READS == optimize.READS["paste_roi"]
+
+    assert cls("contours").WRITES == optimize.WRITES["contours"]
+    assert cls("harris").WRITES == optimize.WRITES["harris"]
+    assert cls("shi_tomasi").WRITES == optimize.WRITES["shi_tomasi"]
+
+    assert cls("brightness_contrast").POINT_OP is True
+    assert cls("gamma").POINT_OP is True
+    assert cls("threshold").POINT_OP is True
+    assert cls("lut").POINT_OP is False  # deliberately not in POINT_OPS today
+
+    assert cls("morphology").IDENTITY_PARAMS == optimize.IDENTITY["morphology"]
+    assert cls("gaussian_blur").IDENTITY_PARAMS == optimize.IDENTITY["gaussian_blur"]
