@@ -8,7 +8,7 @@ name: docs
 # very first run, and no amount of re-running fixes it.
 on:
   push:
-    branches: [main]
+    branches: [master]
     # The site is built from these and nothing else, so a code-only commit does not
     # spend a few minutes republishing an identical site.
     paths:

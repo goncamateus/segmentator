@@ -47,7 +47,7 @@ jobs:
       - name: Commit, tag, and push
         if: steps.bump.outputs.bumped == 'true'
         run: |
-          tag=$(uvx --from commitizen cz version --tag)
+          tag=$(uvx --from commitizen cz version --project --tag)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml uv.lock
