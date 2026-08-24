@@ -610,7 +610,7 @@ def test_optimize_does_nothing_with_an_empty_chain(window):
 
     window.optimize()
 
-    assert window._optimizer is None
+    assert window.optimizer.worker is None
 
 
 def test_the_dialog_ticks_deletions_but_not_a_fusion(app):

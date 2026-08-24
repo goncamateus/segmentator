@@ -347,8 +347,10 @@ is the usual one; it wants a `gray` above it.
 | [gui/preview_tabs_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/preview_tabs_controller.py) | which preview tabs should exist, and which is current |
 | [gui/playback_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/playback_controller.py) | the preview worker's lifecycle: build/launch/stop, push, transport |
 | [gui/paint_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/paint_controller.py) | converted preview pixmaps and the last measurement snapshot |
+| [gui/optimize_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/optimize_controller.py) | the optimize worker's lifecycle: build/release, re-check a selection, apply it |
 | [gui/style.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/style.py) | both palettes, as a stylesheet and a `QPalette` |
 | [gui/worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/worker.py) | the preview thread: prefix cache, the three rules, warm-up replay |
+| [gui/optimize_worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/optimize_worker.py) | the optimizer thread: its own source, sampling, `analyse` off the main thread |
 | [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | the window itself: widgets, and the Qt glue over the controllers above |
 | [gui/main.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/main.py) | entry point, and the Qt plugin fix |
 | [tests/test_gui.py](https://github.com/goncamateus/segmentator/blob/main/tests/test_gui.py) | runs headless: `QT_QPA_PLATFORM=offscreen uv run pytest tests/test_gui.py` |

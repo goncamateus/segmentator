@@ -73,6 +73,7 @@ from segmentator.gui import style
 from segmentator.gui.document_controller import DocumentController
 from segmentator.gui.edit_ops_controller import EditOpsController
 from segmentator.gui.file_controller import FileController
+from segmentator.gui.optimize_controller import OptimizeController
 from segmentator.gui.paint_controller import PaintController
 from segmentator.gui.playback_controller import PlaybackController
 from segmentator.gui.preview_tabs_controller import PreviewTabsController
@@ -84,9 +85,8 @@ from segmentator.gui.spec import (
     params,
     rebuild_params,
 )
-from segmentator.gui.optimize_worker import OptimizeWorker
 from segmentator.gui.style import PALETTE, label_style
-from segmentator.optimize import Finding, check, observable
+from segmentator.optimize import Finding
 from segmentator.pipeline import registered
 
 ROW_HEIGHT = 22
@@ -641,7 +641,7 @@ class MainWindow(QMainWindow):
         self.preview_tabs = PreviewTabsController(self.document)
         self.playback = PlaybackController(self.document)
         self.paint = PaintController()
-        self._optimizer: OptimizeWorker | None = None
+        self.optimizer = OptimizeController(self.document)
         self.theme = str(QSettings("segmentator", "gui").value("theme", "light"))
         self._scale = 1.0
 
@@ -963,10 +963,10 @@ class MainWindow(QMainWindow):
         if not len(self.specs("stage")):
             self.statusBar().showMessage("nothing to optimize: no stages", 4000)
             return
-        if self._optimizer is not None:
+        if self.optimizer.worker is not None:
             return  # one at a time; the dialog below is modal anyway
 
-        worker = OptimizeWorker(self.cfg)
+        worker = self.optimizer.build()
         # A busy range (0, 0) until the search reports a candidate count — the
         # frame sampling in front of it has no progress to report and, on a 1080p
         # source, is a second or two of decoding on its own.
@@ -984,26 +984,22 @@ class MainWindow(QMainWindow):
         worker.progress.connect(on_progress)
         worker.done.connect(lambda findings: self.on_optimized(waiting, findings))
         worker.failed.connect(lambda text: self.on_optimize_failed(waiting, text))
-        self._optimizer = worker
         worker.start()
 
     def on_optimize_failed(self, waiting: QProgressDialog, text: str) -> None:
         waiting.close()
-        self._optimizer = None
+        self.optimizer.release()
         QMessageBox.critical(self, "optimize", text)
 
     def on_optimized(self, waiting: QProgressDialog, findings: list[Finding]) -> None:
         """Review the findings, re-check whatever was ticked, and apply it."""
         waiting.close()
-        worker, self._optimizer = self._optimizer, None
-        if worker is None:
+        if self.optimizer.worker is None:
             return
         try:
             if not findings:
                 self.statusBar().showMessage("optimize: nothing to simplify", 5000)
                 return
-            specs = [dict(entry) for entry in self.specs("stage")]
-            observed = observable([dict(entry) for entry in self.specs("sink")])
             dialog = OptimizeDialog(self, findings)
             while dialog.exec() == QDialog.DialogCode.Accepted:
                 chosen = dialog.selected()
@@ -1013,7 +1009,7 @@ class MainWindow(QMainWindow):
                 # judged again: two stages can each be removable alone and not
                 # together — drop both greys from `gray, gray, threshold` and the
                 # threshold is suddenly looking at a colour frame.
-                if check(specs, chosen, worker.frames, observed):
+                if self.optimizer.recheck(chosen):
                     self.apply_optimizations(chosen)
                     saved = sum(f.saved_ms for f in chosen)
                     self.statusBar().showMessage(
@@ -1025,23 +1021,13 @@ class MainWindow(QMainWindow):
                     "on its own. Untick one and try again."
                 )
         finally:
-            worker.release()
+            self.optimizer.release()
 
     def apply_optimizations(self, findings: list[Finding]) -> None:
-        """Rewrite the stage list in the ruamel document, bottom-up.
-
-        Row by row rather than replacing the sequence: ruamel hangs each comment
-        off its item's index, and assigning a fresh list drops every one of them,
-        which would show up as the whole file rewritten on the next save.
-        """
-        for finding in sorted(findings, key=lambda f: f.positions[0], reverse=True):
-            first, last = finding.positions[0], finding.positions[-1]
-            for position in range(last, first - 1, -1):
-                self.document.delete("stage", position)
-            for offset, replacement in enumerate(finding.replacement):
-                self.document.insert("stage", first + offset, spec_module.as_spec(replacement))
+        """Rewrite the stage list in the ruamel document, then reflect it in the widgets."""
+        row = self.optimizer.apply(findings)
         self.reload_lists()
-        self.select("stage", min(findings[0].positions[0], len(self.specs("stage")) - 1))
+        self.select("stage", row)
         self.push()
 
     # --- preview tabs -------------------------------------------------------- #

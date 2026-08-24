@@ -363,8 +363,10 @@ em um frame colorido é o caso comum; ele quer um `gray` acima dele.
 | [gui/preview_tabs_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/preview_tabs_controller.py) | quais abas de pré-visualização devem existir, e qual está atual |
 | [gui/playback_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/playback_controller.py) | ciclo de vida do worker de pré-visualização: build/launch/stop, push, transporte |
 | [gui/paint_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/paint_controller.py) | pixmaps convertidos e a última medição |
+| [gui/optimize_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/optimize_controller.py) | ciclo de vida do worker do otimizador: build/release, reverificar uma seleção, aplicá-la |
 | [gui/style.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/style.py) | as duas paletas, como stylesheet e como `QPalette` |
 | [gui/worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/worker.py) | a thread de pré-visualização: cache de prefixo, as três regras, reprodução de aquecimento |
+| [gui/optimize_worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/optimize_worker.py) | a thread do otimizador: fonte própria, amostragem, `analyse` fora da thread principal |
 | [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | a janela em si: widgets, e a cola do Qt sobre os controllers acima |
 | [gui/main.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/main.py) | ponto de entrada, e a correção do plugin do Qt |
 | [tests/test_gui.py](https://github.com/goncamateus/segmentator/blob/main/tests/test_gui.py) | roda headless: `QT_QPA_PLATFORM=offscreen uv run pytest tests/test_gui.py` |
