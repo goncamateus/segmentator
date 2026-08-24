@@ -105,7 +105,7 @@ against seeking backwards. Neither can happen in a batch run: `Pipeline.run` is 
 single forward pass over a monotonic `ctx.index`. Only the shape guard survives on
 the stages themselves — a resized frame invalidates a flow model. Both other rules
 come straight back the moment there is a GUI, and
-[docs/gui.md](docs/gui.md#moving-through-the-video) is where they now live.
+[docs/en/gui.md](docs/en/gui.md#moving-through-the-video) is where they now live.
 
 `goncanalyser/dataset/` (COCO, rosbag, Optuna parameter search, dataset statistics)
 is dataset tooling rather than image processing, and is not ported.

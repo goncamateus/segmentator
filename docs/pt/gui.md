@@ -108,7 +108,7 @@ ruamel o anexou, e se move quando esse stage se move.
 uma grade de cartões de família (os mesmos doze grupos que
 `docs/stages.md` agrupa: Ajuste, Blur / morfologia, Movimento — modelos, e
 assim por diante) em vez de uma combo longa. Cada nome nela é
-`registered("stage")` ou `registered("sink")` — 41 stages, 3 sources, 6
+`registered("stage")` ou `registered("sink")` — 43 stages, 3 sources, 6
 sinks, listados porque se registraram sozinhos, não porque alguém os digitou
 aqui. Cada cartão usa a cor da sua família do [catálogo](stages.md) — azul
 para preparar um frame, roxo para encontrar características nele, verde para
@@ -205,7 +205,7 @@ ajustou a partir dele, e o diz com uma linha: `RECONSTRUCT = ("threshold", "inve
 ## Nomeando um stage
 
 A última linha do formulário de todo stage é `name (tap)`. Preenchê-la
-publica a saída daquele stage sob aquele nome, o que é o que o torna
+capta a saída daquele stage sob aquele nome, o que é o que o torna
 alcançável — pelo `input:` de um sink, por um stage `select`, e pelo
 `draw_on:` de qualquer coisa que desenha. Taps são opcionais; um stage sem
 nome não custa nada.

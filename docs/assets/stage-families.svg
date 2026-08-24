@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 654" width="920" height="654" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
   <title>The stage catalogue, by family</title>
   <rect width="920" height="654" fill="#f5f7fa"/>
-  <text x="24" y="26" font-size="13" font-weight="600" fill="#3e4c59">41 stages. Each one is a `{type: ..., **params}` line, and the order they are written in is the composition.</text>
+  <text x="24" y="26" font-size="13" font-weight="600" fill="#3e4c59">43 stages. Each one is a `{type: ..., **params}` line, and the order they are written in is the composition.</text>
   <g transform="translate(24 44)">
     <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
     <rect width="206" height="4" rx="2" fill="#1f6feb"/>
     <text x="14" y="30" font-size="12" font-weight="600" fill="#1f6feb">Adjust</text>
-    <text x="14" y="52" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">brightness_contrast</text>
-    <text x="14" y="69" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">saturation</text>
-    <text x="14" y="86" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">gamma</text>
-    <text x="14" y="103" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">gray</text>
-    <text x="14" y="120" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">colorspace</text>
-    <text x="14" y="137" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">resize</text>
-    <text x="14" y="154" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">select</text>
+    <text x="14" y="50" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">brightness_contrast</text>
+    <text x="14" y="65" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">saturation</text>
+    <text x="14" y="80" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">gamma</text>
+    <text x="14" y="95" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">lut</text>
+    <text x="14" y="110" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">gray</text>
+    <text x="14" y="125" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">colorspace</text>
+    <text x="14" y="140" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">resize</text>
+    <text x="14" y="155" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">select</text>
   </g>
   <g transform="translate(248 44)">
     <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
@@ -80,6 +81,7 @@
     <text x="14" y="69" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">apply_mask</text>
     <text x="14" y="86" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">mean_background</text>
     <circle cx="188" cy="82" r="4" fill="#f0b429"/>
+    <text x="14" y="103" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3e4c59">color_select</text>
   </g>
   <g transform="translate(248 416)">
     <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>

@@ -178,12 +178,12 @@ class RowDelegate(QStyledItemDelegate):
 class AddDialog(QDialog):
     """The stage/sink palette: sectioned cards instead of one long combo.
 
-    ``QInputDialog.getItem`` used to hold this — one combo box with all 41
+    ``QInputDialog.getItem`` used to hold this — one combo box with all 43
     stage names in registration order, whose dropdown was a single column
     that ran off the bottom of the screen. Wide instead of tall fixes that
     directly: laid out as a grid of family cards (`FAMILIES`, the same
-    grouping `docs/stages.md` and `docs/assets/stage-families.svg` use), 41
-    names fit in three short rows of cards rather than one 41-row list.
+    grouping `docs/stages.md` and `docs/assets/stage-families.svg` use), 43
+    names fit in three short rows of cards rather than one 43-row list.
 
     Each family gets its own small `QListWidget` — rather than one list with
     non-selectable header rows — because `RowDelegate` already knows how to
