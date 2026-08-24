@@ -15,12 +15,14 @@ import numpy as np
 
 from segmentator.ops.common import to_gray
 from segmentator.ops.texture import hog_of, lbp_of
-from segmentator.pipeline import Ctx, register
+from segmentator.pipeline import Ctx, StageInfo, register
 
 
 @register("stage", "hog")
-class Hog:
+class Hog(StageInfo):
     """Histogram of Oriented Gradients. Emits the gradient visualisation."""
+
+    WRITES = ("store:hog", "metrics:hog_dim", "metrics:hog_mean")
 
     def __init__(self, orientations: int = 9, cell: int = 8, block: int = 2):
         self.orientations, self.cell, self.block = orientations, cell, block
@@ -34,12 +36,14 @@ class Hog:
 
 
 @register("stage", "lbp")
-class Lbp:
+class Lbp(StageInfo):
     """Local Binary Patterns. Emits the code image, stretched for display.
 
     ``uniform`` tops out at ``points + 1`` (10 by default), which as raw grey
     levels is a black rectangle, hence the normalise.
     """
+
+    WRITES = ("metrics:lbp_bins", "metrics:lbp_entropy", "rows:lbp")
 
     def __init__(self, points: int = 8, radius: int = 1, method: str = "uniform"):
         self.points, self.radius, self.method = points, radius, method

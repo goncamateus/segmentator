@@ -40,7 +40,7 @@ import numpy as np
 
 from segmentator.ops.common import require_gray, to_gray
 from segmentator.ops.motion import FOREGROUND, FLOW_GAIN, blend, sparse_flow, speeds
-from segmentator.pipeline import Ctx, register
+from segmentator.pipeline import Ctx, StageInfo, register
 from segmentator.stages.preprocess import canvas
 
 BOX_COLOR = (0, 200, 255)
@@ -66,7 +66,7 @@ class _Previous:
 
 
 @register("stage", "mog2")
-class Mog2:
+class Mog2(StageInfo):
     """OpenCV MOG2 adaptive background subtractor. Outputs a foreground mask.
 
     Args:
@@ -74,6 +74,8 @@ class Mog2:
             a shadow is the moving thing's *effect* on the background, not the
             moving thing. Only meaningful with ``detect_shadows: true``.
     """
+
+    STATEFUL = True  # self._subtractor
 
     def __init__(
         self,
@@ -95,8 +97,10 @@ class Mog2:
 
 
 @register("stage", "knn")
-class Knn:
+class Knn(StageInfo):
     """OpenCV KNN adaptive background subtractor. Outputs a foreground mask."""
+
+    STATEFUL = True  # self._subtractor
 
     def __init__(
         self,
@@ -123,12 +127,14 @@ class Knn:
 
 
 @register("stage", "frame_diff")
-class FrameDiff:
+class FrameDiff(StageInfo):
     """Absolute difference against the frame ``lag`` positions back.
 
     Emits a zero frame until enough history exists, so the output shape is stable
     from the very first frame.
     """
+
+    STATEFUL = True  # self._history deque
 
     def __init__(self, lag: int = 1):
         if lag < 1:
@@ -146,7 +152,7 @@ class FrameDiff:
 
 
 @register("stage", "three_frame_diff")
-class ThreeFrameDiff:
+class ThreeFrameDiff(StageInfo):
     """Three-frame differencing: changed *and* still changing.
 
     A pixel counts only where it differs from the previous frame and the previous
@@ -156,6 +162,8 @@ class ThreeFrameDiff:
     The AND is a per-pixel minimum, not ``bitwise_and`` — these are grey levels,
     not flags, and ANDing the bits of 128 and 64 gives 0 for two large changes.
     """
+
+    STATEFUL = True  # self._history
 
     def __init__(self) -> None:
         self._history = _Previous()
@@ -177,7 +185,7 @@ class ThreeFrameDiff:
 
 
 @register("stage", "farneback")
-class Farneback:
+class Farneback(StageInfo):
     """Dense Farneback optical flow, as a 0..255 magnitude image.
 
     Args:
@@ -188,6 +196,8 @@ class Farneback:
             30 at this gain and all but disappears after a morphological open, so
             raise it until the motion you care about uses the range.
     """
+
+    STATEFUL = True  # self._history
 
     def __init__(
         self,
@@ -220,11 +230,13 @@ class Farneback:
 
 
 @register("stage", "lucas_kanade")
-class LucasKanade:
+class LucasKanade(StageInfo):
     """Sparse Lucas-Kanade flow at tracked corners, splatted into a dense image.
 
     ``gain`` is the same calibration constant :class:`Farneback` documents.
     """
+
+    STATEFUL = True  # self._history
 
     def __init__(self, max_points: int = 200, win: int = 15, gain: float = FLOW_GAIN):
         self.max_points = max_points
@@ -250,7 +262,7 @@ class LucasKanade:
 
 
 @register("stage", "motion_heat")
-class MotionHeat:
+class MotionHeat(StageInfo):
     """Accumulate the current heat image over a rolling window.
 
     An exponential average, not a true N-frame window: one ``accumulateWeighted``
@@ -263,6 +275,10 @@ class MotionHeat:
     ``ctx.store["heat"]`` — a float32 array, so it is not a displayable frame;
     :class:`Heatmap` is what turns it into one.
     """
+
+    STATEFUL = True  # self._heat accumulator
+    PUBLISHES = ("heat",)
+    WRITES = ("store:heat",)
 
     def __init__(self, window: int = 20):
         self.window = max(1, int(window))
@@ -278,13 +294,15 @@ class MotionHeat:
 
 
 @register("stage", "heatmap")
-class Heatmap:
+class Heatmap(StageInfo):
     """Paint the accumulated heat over a frame as a JET overlay.
 
     Reads ``ctx.store["heat"]`` when a ``motion_heat`` stage ran, and falls back to
     the current image, so a chain that wants the instantaneous heat rather than
     the rolling average simply leaves ``motion_heat`` out.
     """
+
+    READS = ("store:heat",)
 
     def __init__(self, opacity: float = 0.5, threshold: float = 0.05, draw_on: str = "source"):
         self.opacity = opacity
@@ -302,7 +320,7 @@ class Heatmap:
 
 
 @register("stage", "motion_objects")
-class MotionObjects:
+class MotionObjects(StageInfo):
     """Turn a motion mask into objects: boxes, areas and per-frame speeds.
 
     Expects a binary mask — i.e. a ``threshold`` (and usually a ``morphology``)
@@ -316,6 +334,16 @@ class MotionObjects:
         labels: Write area and speed above each box.
         draw_on: ``source`` or ``image``.
     """
+
+    STATEFUL = True  # self._previous centroids
+    WRITES = (
+        "store:boxes",
+        "metrics:motion_px",
+        "metrics:motion_frac",
+        "metrics:motion_objects",
+        "metrics:motion_speed",
+        "rows:motion",
+    )
 
     def __init__(
         self,

@@ -13,14 +13,14 @@ import cv2
 
 from segmentator.ops.common import to_gray
 from segmentator.ops.keypoints import build, detect
-from segmentator.pipeline import Ctx, register
+from segmentator.pipeline import Ctx, StageInfo, register
 from segmentator.stages.preprocess import canvas
 
 KP_COLOR = (0, 200, 255)
 
 
 @register("stage", "keypoints")
-class Keypoints:
+class Keypoints(StageInfo):
     """Detect and draw keypoints.
 
     Args:
@@ -35,6 +35,8 @@ class Keypoints:
 
     Publishes the descriptor matrix as ``ctx.store["descriptors"]``.
     """
+
+    WRITES = ("store:keypoints", "store:descriptors", "metrics:*", "rows:keypoints")
 
     def __init__(
         self,

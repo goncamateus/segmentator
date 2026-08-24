@@ -22,7 +22,7 @@ from segmentator.ops.structure import (
     harris_corners,
     shi_tomasi_corners,
 )
-from segmentator.pipeline import Ctx, register
+from segmentator.pipeline import Ctx, StageInfo, register
 from segmentator.stages.preprocess import canvas
 
 LINE_COLOR = (0, 255, 0)
@@ -39,8 +39,10 @@ BLOB_COLOR = (255, 0, 255)
 
 
 @register("stage", "canny")
-class Canny:
+class Canny(StageInfo):
     """Canny edge detector. Emits a single-channel binary edge map."""
+
+    WRITES = ("metrics:edge_px",)
 
     def __init__(self, lo: int = 100, hi: int = 200):
         self.lo = lo
@@ -53,12 +55,14 @@ class Canny:
 
 
 @register("stage", "sobel")
-class Sobel:
+class Sobel(StageInfo):
     """Sobel derivative magnitude, scaled back to uint8.
 
     ``ksize`` is clamped to 1/3/5/7 and ``dx``/``dy`` may not both be zero, both
     of which OpenCV throws on rather than defaulting.
     """
+
+    WRITES = ("metrics:edge_px",)
 
     def __init__(self, ksize: int = 3, dx: int = 1, dy: int = 1):
         self.ksize = min(7, odd_kernel(ksize))
@@ -75,8 +79,10 @@ class Sobel:
 
 
 @register("stage", "laplacian")
-class Laplacian:
+class Laplacian(StageInfo):
     """Laplacian second derivative, scaled back to uint8."""
+
+    WRITES = ("metrics:edge_px",)
 
     def __init__(self, ksize: int = 3):
         self.ksize = min(31, odd_kernel(ksize))
@@ -93,13 +99,15 @@ class Laplacian:
 
 
 @register("stage", "hough_lines")
-class HoughLines:
+class HoughLines(StageInfo):
     """Probabilistic Hough line transform, drawn as segments.
 
     Always builds its own Canny from ``canny_lo``/``canny_hi`` rather than reading
     ``ctx.image`` directly: ``HoughLinesP`` needs a *binary* edge map, and a Sobel
     magnitude or a raw grey frame is not one.
     """
+
+    WRITES = ("store:lines", "metrics:lines", "rows:lines")
 
     def __init__(
         self,
@@ -141,8 +149,10 @@ class HoughLines:
 
 
 @register("stage", "hough_circles")
-class HoughCircles:
+class HoughCircles(StageInfo):
     """Hough circle transform, drawn as outlines."""
+
+    WRITES = ("store:circles", "metrics:circles", "rows:circles")
 
     def __init__(
         self,
@@ -186,10 +196,11 @@ class HoughCircles:
 # --------------------------------------------------------------------------- #
 
 
-class _Corners:
+class _Corners(StageInfo):
     """Shared publish-and-draw half of the two corner stages."""
 
     draw_on = "source"
+    WRITES = ("store:corners", "metrics:corners", "rows:corners")
 
     def _publish(self, ctx: Ctx, points: np.ndarray) -> None:
         ctx.store["corners"] = points
@@ -241,7 +252,7 @@ class ShiTomasi(_Corners):
 
 
 @register("stage", "contours")
-class Contours:
+class Contours(StageInfo):
     """Find contours above ``min_area`` and draw them.
 
     Args:
@@ -258,6 +269,15 @@ class Contours:
     mask of them as ``ctx.store["contour_mask"]``, which a sink can take with
     ``input: contour_mask``.
     """
+
+    PUBLISHES = ("contour_mask",)
+    WRITES = (
+        "store:contours",
+        "store:contour_mask",
+        "metrics:contours",
+        "metrics:contour_area",
+        "rows:contours",
+    )
 
     def __init__(
         self,
@@ -312,12 +332,15 @@ class Contours:
 
 
 @register("stage", "bounding_boxes")
-class BoundingBoxes:
+class BoundingBoxes(StageInfo):
     """Draw axis-aligned boxes around contours above ``min_area``.
 
     Reuses ``ctx.store["contours"]`` when a ``contours`` stage already ran, so the
     same shapes are not found twice; otherwise it finds them itself.
     """
+
+    READS = ("store:contours",)
+    WRITES = ("store:boxes", "metrics:boxes", "rows:boxes")
 
     def __init__(
         self,
@@ -351,12 +374,14 @@ class BoundingBoxes:
 
 
 @register("stage", "blobs")
-class Blobs:
+class Blobs(StageInfo):
     """SimpleBlobDetector with the area, circularity and convexity filters.
 
     ``0`` disables the circularity or convexity filter. ``dark`` looks for dark
     blobs on a light background, which is OpenCV's own default.
     """
+
+    WRITES = ("metrics:blobs", "rows:blobs")
 
     def __init__(
         self,
