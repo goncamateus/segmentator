@@ -11,11 +11,21 @@ from segmentator.gui.document_controller import DocumentController
 from segmentator.gui.edit_ops_controller import EditOpsController
 
 
-def test_add_inserts_a_fresh_spec_at_the_given_position():
+def test_add_inserts_after_the_selected_row():
+    document = DocumentController(CommentedMap(stages=[{"type": "gray"}, {"type": "canny"}]))
+    controller = EditOpsController(document)
+
+    at = controller.add("stage", "median_blur", 0)
+
+    assert at == 1
+    assert [e["type"] for e in document.specs("stage")] == ["gray", "median_blur", "canny"]
+
+
+def test_add_with_nothing_selected_appends_at_the_end():
     document = DocumentController(CommentedMap(stages=[{"type": "gray"}]))
     controller = EditOpsController(document)
 
-    at = controller.add("stage", "median_blur", 1)
+    at = controller.add("stage", "median_blur", -1)
 
     assert at == 1
     assert [e["type"] for e in document.specs("stage")] == ["gray", "median_blur"]
@@ -83,10 +93,34 @@ def test_move_reorders_for_a_drag_and_drop():
     assert [e["type"] for e in document.specs("stage")] == ["canny", "threshold", "gray"]
 
 
+def test_reorder_drag_translates_qts_pre_removal_row():
+    # Qt's rowsMoved reports the insert point *before* the source row is
+    # removed, so a drop below the source lands one index higher than where
+    # the entry actually ends up: dragging row 0 to "row 2" really means the
+    # entry ends up at index 1, after canny slides up to fill the gap.
+    stages = CommentedSeq([{"type": "gray"}, {"type": "canny"}, {"type": "threshold"}])
+    document = DocumentController(CommentedMap(stages=stages))
+    controller = EditOpsController(document)
+
+    controller.reorder_drag("stage", 0, 2)
+
+    assert [e["type"] for e in document.specs("stage")] == ["canny", "gray", "threshold"]
+
+
+def test_reorder_drag_above_the_source_needs_no_adjustment():
+    stages = CommentedSeq([{"type": "gray"}, {"type": "canny"}, {"type": "threshold"}])
+    document = DocumentController(CommentedMap(stages=stages))
+    controller = EditOpsController(document)
+
+    controller.reorder_drag("stage", 2, 0)
+
+    assert [e["type"] for e in document.specs("stage")] == ["threshold", "gray", "canny"]
+
+
 def test_operates_on_sinks_too():
     document = DocumentController(CommentedMap(sinks=[{"type": "display"}]))
     controller = EditOpsController(document)
 
-    controller.add("sink", "csv", 1)
+    controller.add("sink", "csv", 0)
 
     assert [e["type"] for e in document.specs("sink")] == ["display", "csv"]

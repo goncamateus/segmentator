@@ -882,8 +882,7 @@ class MainWindow(QMainWindow):
         if name is None:
             return
         widget = self.stage_list if kind == "stage" else self.sink_list
-        at = widget.currentRow() + 1 if widget.currentRow() >= 0 else len(self.specs(kind))
-        at = self.edit_ops.add(kind, name, at)
+        at = self.edit_ops.add(kind, name, widget.currentRow())
         self.reload_lists()
         self.select(kind, at)
         self.push()
@@ -928,8 +927,8 @@ class MainWindow(QMainWindow):
         self.push()
 
     def on_rows_moved(self, _parent, start: int, _end: int, _dest, row: int) -> None:
-        """A drag inside the list. Qt reports the insert point *before* the removal."""
-        self.edit_ops.move("stage", start, row - 1 if row > start else row)
+        """A drag inside the list."""
+        self.edit_ops.reorder_drag("stage", start, row)
         self.reload_lists()
         self.push()
 
