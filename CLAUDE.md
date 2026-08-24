@@ -43,3 +43,17 @@ Deliberately **not** ported from goncanalyser: the deferred-draw-callable overla
 ### Packaging gotcha
 
 The GUI extra depends on plain `opencv-python` (not `-headless`) because `DisplaySink` needs the full wheel to open an OpenCV window even in a batch run. This collides with PyQt6's Qt plugins; `segmentator/gui/main.py` works around it by popping `QT_QPA_PLATFORM_PLUGIN_PATH` before PyQt6 loads. That workaround must ship in the frozen PyInstaller bundle too — don't move it into a dev-only setup step. Build commands need both `--extra gui --group build`; dropping either drops PyQt6 or PyInstaller from the synced env. Full build details are in [README.md](README.md#packaging).
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`goncamateus/segmentator`), via `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical labels used as-is. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`CONTEXT.md` + `docs/adr/` at repo root). See `docs/agents/domain.md`.
