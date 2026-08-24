@@ -1,0 +1,56 @@
+name: bump-version
+
+# Auto-bumps [project].version from Conventional Commits on every push to master, then
+# tags and pushes the result. The tag push is what fires release.yml (on: push: tags:
+# ["v*"]) — release.yml's own "Tag matches project version" check is the reason these two
+# have to move together, and this workflow is what makes that automatic instead of manual.
+#
+# Requires a repo secret PAT (RELEASE_TOKEN, contents: read/write) — see below.
+on:
+  push:
+    branches: [master]
+
+jobs:
+  bump:
+    # The bump commit this job pushes lands on master too; without this guard it would
+    # re-trigger itself forever.
+    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # A PAT, not the default GITHUB_TOKEN: GitHub refuses to let a GITHUB_TOKEN-authored
+          # push trigger other workflows, so a tag pushed with it would silently never reach
+          # release.yml. Create a repo-scoped PAT (Contents: read/write) and add it as the
+          # RELEASE_TOKEN secret.
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Bump version from conventional commits
+        id: bump
+        run: |
+          set +e
+          uvx --from commitizen cz bump --version-files-only --yes
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "bumped=true" >> "$GITHUB_OUTPUT" ;;
+            # NO_COMMITS_FOUND / NO_INCREMENT: nothing eligible since the last tag — not a failure.
+            3|21) echo "bumped=false" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$code" ;;
+          esac
+
+      - name: Commit, tag, and push
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          tag=$(uvx --from commitizen cz version --tag)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml uv.lock
+          git commit -m "bump: ${tag}"
+          git tag "$tag"
+          git push origin master "$tag"

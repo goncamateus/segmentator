@@ -27,6 +27,12 @@ build = ["pyinstaller>=6.11"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
+[tool.commitizen]
+# "uv" provider (not "pep621"): bumps [project].version *and* refreshes uv.lock's
+# recorded package version in the same step — see .github/workflows/bump-version.yml.
+version_provider = "uv"
+tag_format = "v$version"
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
