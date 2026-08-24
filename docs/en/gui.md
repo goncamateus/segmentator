@@ -103,7 +103,7 @@ moves.
 `+` opens the palette — half the main window's width, and laid out as a grid of
 family cards (the same twelve `docs/stages.md` groups into: Adjust, Blur /
 morphology, Motion — models, and so on) rather than one long combo. Every name
-in it is `registered("stage")` or `registered("sink")` — 41 stages, 3 sources, 6
+in it is `registered("stage")` or `registered("sink")` — 43 stages, 3 sources, 6
 sinks, listed because they registered themselves, not because anyone typed them
 here. Each card wears its family's colour from the
 [catalogue](stages.md) — blue to prepare a frame, purple to find features in it,
@@ -196,7 +196,7 @@ says so with one line: `RECONSTRUCT = ("threshold", "invert")`.
 
 ## Naming a stage
 
-The last row of every stage's form is `name (tap)`. Filling it in publishes that
+The last row of every stage's form is `name (tap)`. Filling it in taps that
 stage's output under that name, which is what makes it reachable — by a sink's
 `input:`, by a `select` stage, and by the `draw_on:` of anything that paints.
 Taps are opt-in; an unnamed stage costs nothing.
