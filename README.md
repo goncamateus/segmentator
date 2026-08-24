@@ -43,12 +43,6 @@ uv run segmentator-gui examples/motion.yaml
 One source frame run through three of [the stage families](docs/en/stages.md):
 structure, texture and motion.
 
-Part of the [goncanalyser](https://github.com/goncamateus/goncanalyser) suite.
-goncanalyser is the Qt workspace where you *tune* an operator chain by hand;
-segmentator is the headless engine that *runs* the tuned recipe over a batch. Every
-operator goncanalyser exposes exists here as a stage, and the two agree
-numerically — see [Parity](#parity).
-
 ## Documentation
 
 Published at [goncamateus.github.io/segmentator](https://goncamateus.github.io/segmentator/), in
@@ -102,23 +96,6 @@ the error messages and the editor's palette and forms alike.
 | [segmentator/video_writer.py](segmentator/video_writer.py) | ffmpeg/libx264 pipe |
 | [segmentator/gui/](segmentator/gui/) | the PyQt6 editor — optional, `--extra gui` |
 
-## Parity
-
-Every operator is ported from goncanalyser's `features/*` — the function bodies,
-not a reimplementation — with each `Settings` field turned into a constructor
-argument on the stage that uses it. On the same frame with the same parameters
-the two produce identical output: `edge_px`, corner and keypoint counts, HOG
-vectors, LBP codes, histogram plots, contour rows and Hough rows all match
-exactly, across the two repos' different OpenCV builds.
-
-Not ported, on purpose: goncanalyser's deferred-draw-callable overlay collector
-(`Result.ops`) — a linear chain composes overlays through ordering instead — and
-its `MotionState` re-analysis/seek-backwards guards, which a single forward
-batch pass can't trigger (only the shape guard survives, on the stages
-themselves) — both rules come back the moment there is a GUI, and
-[docs/en/gui.md](docs/en/gui.md#moving-through-the-video) is where they now
-live. `goncanalyser/dataset/` (COCO, rosbag, Optuna search, dataset stats) is
-dataset tooling, not image processing, and stays out too.
 
 ## Tests
 
@@ -161,8 +138,7 @@ attaches both to a GitHub release. Windows is not in that matrix — build it by
 same spec if you need it.
 
 One packaging constraint worth knowing before touching dependencies: the GUI depends on
-plain `opencv-python`, not `opencv-python-headless` — the opposite of goncanalyser's choice,
-and for the opposite reason. `DisplaySink` needs the full wheel to open an OpenCV window in
+plain `opencv-python`. `DisplaySink` needs the full wheel to open an OpenCV window in
 a batch run; `segmentator/gui/main.py` works around the resulting Qt-plugin clash by popping
 `QT_QPA_PLATFORM_PLUGIN_PATH` before PyQt6 loads (see [docs/en/gui.md](docs/en/gui.md#troubleshooting)).
 That workaround has to survive into the frozen bundle too, which is why it lives in the entry
