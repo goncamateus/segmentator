@@ -21,64 +21,61 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from segmentator import io, stages  # noqa: F401  — importing registers everything
-from segmentator.pipeline import _REGISTRY, build, registered
-
-# Stages that carry something from one frame to the next: a background model, a
-# previous frame, an accumulator, the last set of centroids, a fitted mask. The
-# editor treats these specially — re-running one over the frame already on screen
-# would teach it that frame, and rebuilding one throws its history away.
-STATEFUL = frozenset(
-    {
-        "mog2",  # _subtractor
-        "knn",  # _subtractor
-        "frame_diff",  # _history deque
-        "three_frame_diff",  # _history
-        "farneback",  # _history
-        "lucas_kanade",  # _history
-        "motion_heat",  # _heat accumulator
-        "motion_objects",  # _previous centroids
-        "mean_background",  # _model
-        "static_mask",  # mask, fitted on the first frame
-    }
-)
+from segmentator.pipeline import _REGISTRY, StageInfo, build, component_or, registered
 
 # Keys of a stage spec that are not constructor parameters.
 RESERVED = ("type", "name")
 
-# Stages that publish an image into ``ctx.store`` under a fixed key a later
-# ``input:`` or ``draw_on:`` can name — e.g. ``contours`` also publishes
-# ``contour_mask``. Hand-maintained like STATEFUL, and checked by _demo()
-# against the registry. Only image-valued keys are listed: a stage that
-# publishes a list (``contours`` itself) or a vector (``hog``) has nothing a
-# preview could resolve to.
-PUBLISHES: dict[str, tuple[str, ...]] = {
-    "static_mask": ("mask",),
-    "color_select": ("mask",),
-    "motion_heat": ("heat",),
-    "histogram": ("histogram",),
-    "contours": ("contour_mask",),
-}
 
-# Stages whose per-channel params should be labelled with the channel's own
-# letter (R, G, B / H, S, V / L, a, b) rather than the generic ``chN`` name a
-# fixed constructor signature is stuck with — the mapping depends on a sibling
-# param's value (``space``), which ``inspect.signature`` can't see. Hand
-# maintained like the tables above; checked by _demo().
-CHANNEL_PARAMS: dict[str, tuple[str, ...]] = {
-    "color_select": ("ch0", "ch1", "ch2"),
-}
+def _stage_class(type_name: str) -> type[StageInfo]:
+    """The registered stage class for ``type_name``, or plain ``StageInfo`` defaults if unknown.
+
+    ``type_name`` can be blank or half-typed while the editor is mid-edit on a
+    fresh row, so this stays total rather than raising.
+    """
+    return component_or("stage", type_name, StageInfo)
+
+
+def is_stateful(type_name: str) -> bool:
+    """Whether this stage type carries something from one frame to the next.
+
+    A background model, a previous frame, an accumulator, the last set of
+    centroids, a fitted mask — re-running one of these over the frame already
+    on screen would teach it that frame, and rebuilding one throws its history
+    away, which is why the editor treats these specially. Read straight off
+    the registered class's ``StageInfo.STATEFUL`` rather than a hand-maintained
+    set, so a stage only has to say this once.
+    """
+    return _stage_class(type_name).STATEFUL
+
+
+def publishes(type_name: str) -> tuple[str, ...]:
+    """Images this stage type publishes into ``ctx.store`` under a fixed key.
+
+    A later ``input:``/``draw_on:`` or a sink's ``input:`` can name one — e.g.
+    ``contours`` also publishes ``contour_mask``. Only image-valued keys come
+    back here: a stage that publishes a list (``contours`` itself) or a vector
+    (``hog``) has nothing a preview could resolve to, and ``StageInfo.WRITES``
+    carries those too under the same namespace.
+    """
+    return _stage_class(type_name).PUBLISHES
+
+
+def channel_params(type_name: str) -> tuple[str, ...]:
+    """Constructor parameters that are a per-channel setting, e.g. ``color_select``'s ``ch0``/``ch1``/``ch2``."""
+    return _stage_class(type_name).CHANNEL_PARAMS
 
 
 def channel_label(type_name: str, param_name: str, spec: dict[str, Any]) -> str | None:
-    """The channel letter for a :data:`CHANNEL_PARAMS` entry, given the spec's chosen space.
+    """The channel letter for a :func:`channel_params` entry, given the spec's chosen space.
 
-    ``None`` for anything not in ``CHANNEL_PARAMS``, so a caller falls back to
-    the plain param name.
+    ``None`` for anything not in ``channel_params(type_name)``, so a caller
+    falls back to the plain param name.
     """
     from segmentator.ops.color import SPACES
 
-    channels = CHANNEL_PARAMS.get(type_name)
-    if channels is None or param_name not in channels:
+    channels = channel_params(type_name)
+    if not channels or param_name not in channels:
         return None
     space_default = next((p.default for p in params("stage", type_name) if p.name == "space"), "hsv")
     _, names, _ = SPACES.get(spec.get("space", space_default), SPACES[space_default])
@@ -86,8 +83,8 @@ def channel_label(type_name: str, param_name: str, spec: dict[str, Any]) -> str 
 
 # The "Add stage" palette's sections. Editorial, not derivable from the
 # registry — a family is a grouping by what you reach for it *for*, which the
-# registry has no notion of — so, like STATEFUL, it is hand-maintained and
-# checked by _demo() rather than generated. Matches docs/stages.md and
+# registry has no notion of — so it is hand-maintained and checked by _demo()
+# rather than generated. Matches docs/stages.md and
 # docs/assets/stage-families.svg exactly: same 12 families, same order, same
 # membership, so the palette a user opens in the editor is the same shape as
 # the catalogue they might have already read.
@@ -275,18 +272,16 @@ def _demo() -> None:
     """The three rules above, checked against the repo's own configs."""
     import io as io_module
 
-    assert STATEFUL <= set(registered("stage"))
-    assert PUBLISHES.keys() <= set(registered("stage"))
-    assert CHANNEL_PARAMS.keys() <= set(registered("stage"))
-
-    # PUBLISHES is the image-valued subset of the optimizer's store entries, so
-    # every one of its keys must appear there. Without this the two drift and a
-    # dead-stage analysis starts deleting stages a preview can still resolve.
-    from segmentator.optimize import WRITES
-
-    for name, keys in PUBLISHES.items():
-        store = {k.removeprefix("store:") for k in WRITES.get(name, ()) if k.startswith("store:")}
-        assert set(keys) <= store, f"{name}: {set(keys) - store} in PUBLISHES but not WRITES"
+    # STATEFUL/PUBLISHES/CHANNEL_PARAMS are read straight off each stage
+    # class's own StageInfo attributes (segmentator/pipeline.py); the
+    # PUBLISHES-subset-of-WRITES invariant is checked once, on the registry
+    # directly, by tests/test_optimize.py::test_every_stage_exposes_self_description
+    # — it stays in the base test suite because this module needs ruamel.yaml.
+    assert is_stateful("mog2") is True
+    assert is_stateful("gray") is False
+    assert is_stateful("nonsense") is False
+    assert publishes("contours") == ("contour_mask",)
+    assert channel_params("color_select") == ("ch0", "ch1", "ch2")
 
     assert channel_label("color_select", "ch0", {}) == "H"  # default space: hsv
     assert channel_label("color_select", "ch2", {"space": "bgr"}) == "R"

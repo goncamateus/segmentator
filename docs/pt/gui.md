@@ -357,8 +357,14 @@ em um frame colorido é o caso comum; ele quer um `gray` acima dele.
 | | |
 |---|---|
 | [gui/spec.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/spec.py) | assinaturas, a regra ao-vivo-vs-reconstrução, round-trip de YAML. Sem Qt. |
+| [gui/document_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/document_controller.py) | CRUD da lista de specs, rótulos, marcas, sink padrão. Sem Qt. |
+| [gui/file_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/file_controller.py) | abrir/salvar/salvar-como, a string do comando de execução. Sem Qt. |
+| [gui/edit_ops_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/edit_ops_controller.py) | contas de índice para adicionar/remover/mover/reordenar. Sem Qt. |
+| [gui/preview_tabs_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/preview_tabs_controller.py) | quais abas de pré-visualização devem existir, e qual está atual |
+| [gui/playback_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/playback_controller.py) | ciclo de vida do worker de pré-visualização: build/launch/stop, push, transporte |
+| [gui/paint_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/paint_controller.py) | pixmaps convertidos e a última medição |
 | [gui/style.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/style.py) | as duas paletas, como stylesheet e como `QPalette` |
 | [gui/worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/worker.py) | a thread de pré-visualização: cache de prefixo, as três regras, reprodução de aquecimento |
-| [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | a janela e cada operação acima |
+| [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | a janela em si: widgets, e a cola do Qt sobre os controllers acima |
 | [gui/main.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/main.py) | ponto de entrada, e a correção do plugin do Qt |
 | [tests/test_gui.py](https://github.com/goncamateus/segmentator/blob/main/tests/test_gui.py) | roda headless: `QT_QPA_PLATFORM=offscreen uv run pytest tests/test_gui.py` |

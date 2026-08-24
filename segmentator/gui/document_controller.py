@@ -23,7 +23,6 @@ from typing import Any
 from ruamel.yaml.comments import CommentedMap
 
 from segmentator.gui import spec as spec_module
-from segmentator.gui.spec import STATEFUL
 
 
 def _move_comment_preserving(seq: Any, src: int, dst: int) -> None:
@@ -83,7 +82,7 @@ class DocumentController:
         entries = self.specs("stage")
         above = entries if upto is None else entries[:upto]
         names = [s.get("name") for s in above if s.get("name")]
-        published = [key for s in above for key in spec_module.PUBLISHES.get(s.get("type", ""), ())]
+        published = [key for s in above for key in spec_module.publishes(s.get("type", ""))]
         return ("image", "source", *names, *published)
 
     def label(self, kind: str, position: int, entry: dict[str, Any]) -> str:
@@ -100,7 +99,7 @@ class DocumentController:
             "kind": kind,
             "type": type_name,
             "name": entry.get("name") if kind == "stage" else None,
-            "stateful": kind == "stage" and type_name in STATEFUL,
+            "stateful": kind == "stage" and spec_module.is_stateful(type_name),
         }
 
     def sink_default(self, type_name: str) -> str:

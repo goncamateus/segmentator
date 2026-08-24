@@ -123,7 +123,7 @@ def test_marks_reports_kind_type_name_and_stateful():
         "kind": "stage",
         "type": "farneback",
         "name": None,
-        "stateful": True,  # farneback is in STATEFUL
+        "stateful": True,  # farneback carries a history buffer (StageInfo.STATEFUL)
     }
     assert document.marks("stage", {"type": "threshold", "name": "mask"}) == {
         "kind": "stage",

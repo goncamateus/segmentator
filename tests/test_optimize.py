@@ -317,28 +317,27 @@ def test_analyse_with_frames_prices_and_confirms(frames):
     assert [s["type"] for s in apply_findings(cfg["stages"], keep)] == ["gray", "threshold"]
 
 
-def test_tables_only_name_stages_that_exist():
+def test_channel_walk_tables_only_name_stages_that_exist():
+    """``_MAKES_GRAY``/``_MAKES_BGR`` have no StageInfo equivalent — a stage's
+    output channel count isn't part of its self-description — so they stay
+    hand-maintained here; this just guards against a typo'd stage name."""
     from segmentator.pipeline import registered
 
     known = set(registered("stage"))
-    assert optimize.WRITES.keys() <= known
-    assert optimize.READS.keys() <= known
-    assert set(optimize.IDENTITY) <= known
-    assert set(optimize.POINT_OPS) <= known
     assert optimize._MAKES_GRAY <= known and optimize._MAKES_BGR <= known
 
 
 def test_every_stage_exposes_self_description():
     """Every registered stage carries the class-level metadata from StageInfo.
 
-    Same "hand-maintained tables only name stages that exist" spirit as the
-    test above, flipped around: instead of checking a table's keys are real
-    stages, this checks every real stage carries the attributes meant to
-    replace those tables (issue #6 — additive only, the tables above still
-    stand until #15). Skips leading-underscore registrations the same way
-    gui/spec.py's _demo() does: those exist only for a test's own process
-    (tests/test_pipeline.py's "_test_tag") and were never meant to describe
-    themselves for the registry's consumers.
+    Since issue #15, this is the only place these attributes are validated:
+    optimize.py and gui/spec.py no longer carry hand-maintained tables of
+    their own — both read STATEFUL/PUBLISHES/CHANNEL_PARAMS/READS/WRITES/
+    POINT_OP/IDENTITY_PARAMS straight off the registered class. Skips
+    leading-underscore registrations the same way gui/spec.py's _demo() does:
+    those exist only for a test's own process (tests/test_pipeline.py's
+    "_test_tag") and were never meant to describe themselves for the
+    registry's consumers.
     """
     from segmentator.pipeline import StageInfo, component, registered
 
@@ -358,24 +357,17 @@ def test_every_stage_exposes_self_description():
 
         # The cross-table invariant the parent issue calls out: a published
         # (image-valued) store key must also be a key this stage says it
-        # writes to the store — checked directly on the class now, rather
-        # than across gui/spec.py's PUBLISHES and optimize.py's WRITES.
+        # writes to the store — checked directly on the class, which is the
+        # only place either fact is recorded now.
         written_store_keys = {k.removeprefix("store:") for k in cls.WRITES if k.startswith("store:")}
         missing = set(cls.PUBLISHES) - written_store_keys
         assert not missing, f"{name}: {missing} in PUBLISHES but not in WRITES"
 
 
-def test_stage_info_agrees_with_the_hand_maintained_tables():
-    """Spot checks that the new per-class values agree with today's tables.
-
-    Not a full duplicate of the tables above — that would just be maintaining
-    two copies instead of one — but a handful of stages picked to cover every
-    kind of attribute (stateful, reads, writes, point op, identity), so a
-    copy-paste slip when porting a table entry onto its class is caught here
-    instead of silently drifting. Deliberately checks only against
-    optimize.py's own tables, not gui/spec.py's (STATEFUL, PUBLISHES,
-    CHANNEL_PARAMS) — this file must stay importable with no optional
-    dependency installed, and gui/spec.py needs ruamel.yaml.
+def test_stage_info_values_for_representative_stages():
+    """Literal spot-checks on a handful of stages covering every kind of
+    attribute (stateful, reads, writes, point op, identity) — the sort of
+    copy-paste slip that would land a table entry on the wrong stage.
     """
     from segmentator.pipeline import component
 
@@ -385,17 +377,46 @@ def test_stage_info_agrees_with_the_hand_maintained_tables():
     assert cls("mog2").STATEFUL is True
     assert cls("gray").STATEFUL is False
 
-    assert cls("mean_background").READS == optimize.READS["mean_background"]
-    assert cls("paste_roi").READS == optimize.READS["paste_roi"]
+    assert cls("mean_background").READS == ("store:mask",)
+    assert cls("paste_roi").READS == ("store:roi",)
 
-    assert cls("contours").WRITES == optimize.WRITES["contours"]
-    assert cls("harris").WRITES == optimize.WRITES["harris"]
-    assert cls("shi_tomasi").WRITES == optimize.WRITES["shi_tomasi"]
+    assert cls("contours").WRITES == (
+        "store:contours",
+        "store:contour_mask",
+        "metrics:contours",
+        "metrics:contour_area",
+        "rows:contours",
+    )
+    assert cls("harris").WRITES == ("store:corners", "metrics:corners", "rows:corners")
+    assert cls("shi_tomasi").WRITES == ("store:corners", "metrics:corners", "rows:corners")
 
     assert cls("brightness_contrast").POINT_OP is True
     assert cls("gamma").POINT_OP is True
     assert cls("threshold").POINT_OP is True
-    assert cls("lut").POINT_OP is False  # deliberately not in POINT_OPS today
+    assert cls("lut").POINT_OP is False
 
-    assert cls("morphology").IDENTITY_PARAMS == optimize.IDENTITY["morphology"]
-    assert cls("gaussian_blur").IDENTITY_PARAMS == optimize.IDENTITY["gaussian_blur"]
+    assert cls("morphology").IDENTITY_PARAMS == {"iterations": (0,)}
+    assert cls("gaussian_blur").IDENTITY_PARAMS == {"ksize": (0, 1)}
+
+
+def test_optimize_module_has_no_gui_import():
+    """Acceptance criterion of issue #15: the optimizer works with only the base
+    (non-GUI) install, so nothing in it may import from segmentator.gui — it used
+    to reach into gui/spec.py's STATEFUL set for `needs_contiguous`.
+    """
+    import ast
+    from pathlib import Path
+
+    tree = ast.parse(Path(optimize.__file__).read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            assert not node.module.startswith("segmentator.gui"), node.module
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                assert not alias.name.startswith("segmentator.gui"), alias.name
+
+
+def test_needs_contiguous_reads_stateful_off_the_registry():
+    assert optimize.needs_contiguous([{"type": "mog2"}]) is True
+    assert optimize.needs_contiguous([{"type": "gray"}, {"type": "canny"}]) is False
+    assert optimize.needs_contiguous([]) is False

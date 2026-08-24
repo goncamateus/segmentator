@@ -341,8 +341,14 @@ is the usual one; it wants a `gray` above it.
 | | |
 |---|---|
 | [gui/spec.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/spec.py) | signatures, the live-vs-rebuild rule, YAML round-trip. No Qt. |
+| [gui/document_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/document_controller.py) | the spec-list CRUD, labels, marks, default-sink lookups. No Qt. |
+| [gui/file_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/file_controller.py) | open/save/save-as/the copy-run-command string. No Qt. |
+| [gui/edit_ops_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/edit_ops_controller.py) | add/remove/shift/reorder index bookkeeping. No Qt. |
+| [gui/preview_tabs_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/preview_tabs_controller.py) | which preview tabs should exist, and which is current |
+| [gui/playback_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/playback_controller.py) | the preview worker's lifecycle: build/launch/stop, push, transport |
+| [gui/paint_controller.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/paint_controller.py) | converted preview pixmaps and the last measurement snapshot |
 | [gui/style.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/style.py) | both palettes, as a stylesheet and a `QPalette` |
 | [gui/worker.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/worker.py) | the preview thread: prefix cache, the three rules, warm-up replay |
-| [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | the window and every operation above |
+| [gui/window.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/window.py) | the window itself: widgets, and the Qt glue over the controllers above |
 | [gui/main.py](https://github.com/goncamateus/segmentator/blob/main/segmentator/gui/main.py) | entry point, and the Qt plugin fix |
 | [tests/test_gui.py](https://github.com/goncamateus/segmentator/blob/main/tests/test_gui.py) | runs headless: `QT_QPA_PLATFORM=offscreen uv run pytest tests/test_gui.py` |

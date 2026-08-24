@@ -31,7 +31,6 @@ from PyQt6.QtGui import (
     QGuiApplication,
     QKeySequence,
     QPainter,
-    QPixmap,
     QShortcut,
 )
 from PyQt6.QtWidgets import (
@@ -72,11 +71,14 @@ from PyQt6.QtWidgets import (
 from segmentator.gui import spec as spec_module
 from segmentator.gui import style
 from segmentator.gui.document_controller import DocumentController
+from segmentator.gui.edit_ops_controller import EditOpsController
+from segmentator.gui.file_controller import FileController
+from segmentator.gui.paint_controller import PaintController
+from segmentator.gui.playback_controller import PlaybackController
+from segmentator.gui.preview_tabs_controller import PreviewTabsController
 from segmentator.gui.spec import (
-    CHANNEL_PARAMS,
     CHOICES,
     FAMILIES,
-    STATEFUL,
     Param,
     channel_label,
     params,
@@ -84,11 +86,9 @@ from segmentator.gui.spec import (
 )
 from segmentator.gui.optimize_worker import OptimizeWorker
 from segmentator.gui.style import PALETTE, label_style
-from segmentator.gui.worker import PreviewWorker, preview_key
 from segmentator.optimize import Finding, check, observable
 from segmentator.pipeline import registered
 
-SINK_IMAGE_TYPES = ("display", "ffmpeg", "image", "crops")
 ROW_HEIGHT = 22
 # Rows shown in one AddDialog family card before it scrolls instead of growing.
 # A fixed cap, not "tallest card in this grid row": a 7-member family sitting
@@ -332,7 +332,7 @@ class AddDialog(QDialog):
                 "kind": self.kind,
                 "type": name,
                 "name": None,
-                "stateful": self.kind == "stage" and name in STATEFUL,
+                "stateful": self.kind == "stage" and spec_module.is_stateful(name),
             }
             item.setData(Qt.ItemDataRole.UserRole, marks)
             listw.addItem(item)
@@ -608,7 +608,7 @@ class ParamForm(QWidget):
         # `space` decides the channel letters ch0..ch2 are labelled with —
         # those labels are drawn once in show_spec, so a value that feeds
         # another param's label needs the form rebuilt to pick it up.
-        if key == "space" and self.spec.get("type") in CHANNEL_PARAMS:
+        if key == "space" and spec_module.channel_params(self.spec.get("type", "")):
             self.show_spec(self.kind, self.spec, self.position)
         self.changed.emit()
 
@@ -634,17 +634,18 @@ class MainWindow(QMainWindow):
 
     def __init__(self, config: str | Path):
         super().__init__()
-        self.path = Path(config)
-        self.document = DocumentController(spec_module.load(self.path))
-        self.worker: PreviewWorker | None = None
+        path = Path(config)
+        self.document = DocumentController(spec_module.load(path))
+        self.files = FileController(self.document, path)
+        self.edit_ops = EditOpsController(self.document)
+        self.preview_tabs = PreviewTabsController(self.document)
+        self.playback = PlaybackController(self.document)
+        self.paint = PaintController()
         self._optimizer: OptimizeWorker | None = None
-        self._images: dict[str, QPixmap] = {}
-        self._current = "source"
-        self._measured: tuple[int, dict, dict] = (0, {}, {})
         self.theme = str(QSettings("segmentator", "gui").value("theme", "light"))
         self._scale = 1.0
 
-        self.setWindowTitle(f"segmentator — {self.path.name}")
+        self.setWindowTitle(f"segmentator — {self.files.path.name}")
         self.resize(1280, 760)
         splitter = QSplitter()
         splitter.addWidget(self._lists())
@@ -841,7 +842,7 @@ class MainWindow(QMainWindow):
         for widget in (self.stage_list, self.sink_list):
             widget.viewport().update()
         self.form.show_spec(self.form.kind, self.form.spec)
-        self.on_measured(*self._measured)
+        self.on_measured(*self.paint.measured)
 
     # --- the document ------------------------------------------------------- #
     #
@@ -882,7 +883,7 @@ class MainWindow(QMainWindow):
             return
         widget = self.stage_list if kind == "stage" else self.sink_list
         at = widget.currentRow() + 1 if widget.currentRow() >= 0 else len(self.specs(kind))
-        self.document.insert(kind, at, spec_module.new_spec(kind, name))
+        at = self.edit_ops.add(kind, name, at)
         self.reload_lists()
         self.select(kind, at)
         self.push()
@@ -892,9 +893,9 @@ class MainWindow(QMainWindow):
         row = widget.currentRow()
         if row < 0:
             return
-        self.document.delete(kind, row)
+        next_row = self.edit_ops.remove(kind, row)
         self.reload_lists()
-        self.select(kind, min(row, len(self.specs(kind)) - 1))
+        self.select(kind, next_row)
         self.push()
 
     def remove_current(self) -> None:
@@ -919,17 +920,16 @@ class MainWindow(QMainWindow):
 
     def shift(self, delta: int) -> None:
         row = self.stage_list.currentRow()
-        target = row + delta
-        if row < 0 or not 0 <= target < len(self.specs("stage")):
+        target = self.edit_ops.shift("stage", row, delta)
+        if target is None:
             return
-        self.document.move("stage", row, target)
         self.reload_lists()
         self.select("stage", target)
         self.push()
 
     def on_rows_moved(self, _parent, start: int, _end: int, _dest, row: int) -> None:
         """A drag inside the list. Qt reports the insert point *before* the removal."""
-        self.document.move("stage", start, row - 1 if row > start else row)
+        self.edit_ops.move("stage", start, row - 1 if row > start else row)
         self.reload_lists()
         self.push()
 
@@ -1047,17 +1047,8 @@ class MainWindow(QMainWindow):
     # --- preview tabs -------------------------------------------------------- #
 
     def reload_tabs(self) -> None:
-        wanted = [("source", "source")]
         row = self.stage_list.currentRow()
-        if row >= 0:
-            entry = self.specs("stage")[row]
-            wanted.insert(0, (f"selected: {entry.get('type', '?')}", preview_key(row)))
-        for entry in self.specs("sink"):
-            type_name = entry.get("type", "?")
-            if type_name not in SINK_IMAGE_TYPES:
-                continue
-            key = entry.get("input", self.document.sink_default(type_name))
-            wanted.append((f"{type_name} ← {key}", key))
+        wanted = self.preview_tabs.tabs(row if row >= 0 else None)
 
         keys = [key for _, key in wanted]
         if [self.tabs.tabData(i) for i in range(self.tabs.count())] == keys:
@@ -1067,29 +1058,27 @@ class MainWindow(QMainWindow):
             self.tabs.removeTab(0)
         for label, key in wanted:
             self.tabs.setTabData(self.tabs.addTab(label), key)
-        index = keys.index(self._current) if self._current in keys else 0
+        index = keys.index(self.preview_tabs.current) if self.preview_tabs.current in keys else 0
         self.tabs.setCurrentIndex(index)
         self.tabs.blockSignals(False)
-        self._current = keys[index] if keys else "source"
+        self.preview_tabs.select(keys[index] if keys else "source")
         self.push_wanted()
 
     def on_tab_changed(self, index: int) -> None:
         key = self.tabs.tabData(index)
         if key:
-            self._current = key
+            self.preview_tabs.select(key)
             self.push_wanted()
             self.repaint_view()
 
     def push_wanted(self) -> None:
-        if self.worker is not None:
-            self.worker.wanted = (self._current,)
+        self.playback.set_wanted((self.preview_tabs.current,))
 
     # --- worker -------------------------------------------------------------- #
 
     def start_worker(self) -> None:
-        self.stop_worker()
         try:
-            worker = PreviewWorker(self.cfg)
+            worker = self.playback.build()
         except (OSError, KeyError, ValueError) as exc:
             QMessageBox.critical(self, "source", str(exc))
             return
@@ -1098,49 +1087,41 @@ class MainWindow(QMainWindow):
         worker.position.connect(self.on_position)
         worker.status.connect(self.statusBar().showMessage)
         worker.failed.connect(lambda text: QMessageBox.critical(self, "preview", text))
-        self.worker = worker
         self.push_wanted()
-        worker.start()
+        self.playback.launch()
 
     def stop_worker(self) -> None:
-        if self.worker is not None:
-            self.worker.stop()
-            self.worker = None
+        self.playback.stop()
 
     def push(self) -> None:
-        """Hand the worker a fresh snapshot of the specs. Never mutate in place."""
-        if self.worker is None:
-            return
-        self.worker.source_spec = dict(self.cfg["source"])
-        self.worker.specs = tuple(dict(entry) for entry in self.specs("stage"))
+        self.playback.push()
 
     def toggle_play(self) -> None:
-        if self.worker is None:
+        if self.playback.worker is None:
             return
-        self.worker.playing = not self.worker.playing
-        self.play_button.setText("❙❙" if self.worker.playing else "▶")
+        playing = self.playback.toggle_play()
+        self.play_button.setText("❙❙" if playing else "▶")
 
     def jump(self, frames: int) -> None:
-        if self.worker is not None:
-            self.worker.step(frames)
+        if self.playback.worker is not None:
+            self.playback.jump(frames)
             self.play_button.setText("▶")
 
     def on_slider(self, value: int) -> None:
-        if self.worker is not None:
-            self.worker.playing = False
+        if self.playback.worker is not None:
+            self.playback.seek(value)
             self.play_button.setText("▶")
-            self.worker.seek(value)
 
     # --- painting ------------------------------------------------------------ #
 
     def on_images(self, images: dict) -> None:
-        self._images = {key: QPixmap.fromImage(image) for key, image in images.items()}
+        self.paint.receive_images(images)
         self.repaint_view()
 
     def repaint_view(self) -> None:
-        pixmap = self._images.get(self._current)
+        pixmap = self.paint.pixmap_for(self.preview_tabs.current)
         if pixmap is None:
-            self.view.setText(f"nothing resolves {self._current!r} on this frame")
+            self.view.setText(f"nothing resolves {self.preview_tabs.current!r} on this frame")
             return
         self.view.setPixmap(
             pixmap.scaled(
@@ -1151,8 +1132,8 @@ class MainWindow(QMainWindow):
         )
 
     def on_measured(self, index: int, metrics: dict, rows: dict) -> None:
-        self._measured = (index, metrics, rows)
-        entries = list(metrics.items()) + [(f"{kind} rows", len(r)) for kind, r in rows.items()]
+        self.paint.receive_measurement(index, metrics, rows)
+        entries = self.paint.metric_rows()
         self.metrics.setRowCount(len(entries))
         for row, (key, value) in enumerate(entries):
             name = QTableWidgetItem(str(key))
@@ -1184,27 +1165,26 @@ class MainWindow(QMainWindow):
         if not path:
             return
         self.stop_worker()
-        self.path = Path(path)
-        self.document = DocumentController(spec_module.load(self.path))
-        self.setWindowTitle(f"segmentator — {self.path.name}")
+        self.files.open(path)
+        self.setWindowTitle(f"segmentator — {self.files.path.name}")
         self.reload_lists()
         self.start_worker()
 
     def save(self) -> None:
-        spec_module.save(self.path, self.cfg)
-        self.statusBar().showMessage(f"saved {self.path}", 4000)
+        self.files.save()
+        self.statusBar().showMessage(f"saved {self.files.path}", 4000)
 
     def save_as(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Save config", str(self.path), "YAML (*.yaml)")
+        path, _ = QFileDialog.getSaveFileName(self, "Save config", str(self.files.path), "YAML (*.yaml)")
         if not path:
             return
-        self.path = Path(path)
-        self.setWindowTitle(f"segmentator — {self.path.name}")
+        self.files.save_as(path)
+        self.setWindowTitle(f"segmentator — {self.files.path.name}")
         self.save()
 
     def copy_command(self) -> None:
         """The batch run this window deliberately does not do."""
-        command = f"uv run segmentator {self.path}"
+        command = self.files.run_command()
         QGuiApplication.clipboard().setText(command)
         self.statusBar().showMessage(f"copied: {command}", 6000)
 

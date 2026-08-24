@@ -38,7 +38,7 @@ import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QImage
 
-from segmentator.gui.spec import STATEFUL, params, rebuild_params
+from segmentator.gui.spec import is_stateful, params, rebuild_params
 from segmentator.pipeline import Ctx, build, frame_for
 
 # Frames replayed through the chain prefix after a reset, so differencing and
@@ -178,7 +178,7 @@ class PreviewWorker(QThread):
         for position in range(start, len(specs)):
             spec = specs[position]
             old = self._built[position] if position < len(self._built) else None
-            stateful = spec.get("type") in STATEFUL
+            stateful = is_stateful(spec.get("type", ""))
             changed = set() if old is None else {k for k in old.keys() | spec.keys() if old.get(k) != spec.get(k)}
             rebuild = (
                 old is None
@@ -271,7 +271,7 @@ class PreviewWorker(QThread):
         remember, so re-running it would be pure cost.
         """
         last = max(
-            (i for i, s in enumerate(self._built) if s.get("type") in STATEFUL),
+            (i for i, s in enumerate(self._built) if is_stateful(s.get("type", ""))),
             default=-1,
         )
         if last < start:

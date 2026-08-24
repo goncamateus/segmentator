@@ -226,6 +226,20 @@ def component(kind: str, name: str) -> type:
     return table[name]
 
 
+def component_or(kind: str, name: str, default: type) -> type:
+    """Like :func:`component`, but ``default`` instead of raising for an unknown name.
+
+    For a caller that needs to treat an unregistered name as "no extra
+    information" rather than an error — a spec mid-edit in the GUI, or a
+    structural walk (:mod:`segmentator.optimize`) that passes an arbitrary
+    ``type:`` string through unchecked.
+    """
+    try:
+        return component(kind, name)
+    except KeyError:
+        return default
+
+
 def _build_stages(specs: Sequence[Mapping[str, Any]]) -> list[Stage]:
     """Build the stage chain, moving each spec's optional ``name`` onto the instance.
 

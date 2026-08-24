@@ -31,69 +31,10 @@ from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
 
-# Importing these is what fills the registry, and every table below is keyed by a
-# registered name — without it the analysis quietly finds nothing at all.
+# Importing these is what fills the registry, and every per-stage lookup below
+# goes through it — without it the analysis quietly finds nothing at all.
 from segmentator import io, stages  # noqa: F401
-from segmentator.pipeline import Ctx, _build_stages, frame_for
-
-# Everything a stage writes *besides* ``ctx.image``, qualified by namespace so one
-# table covers all three: ``store:``, ``metrics:`` and ``rows:``. PUBLISHES above
-# is the image-valued subset of the ``store:`` entries, which is all a preview can
-# resolve; this is the whole picture, which is what a dead-stage analysis needs —
-# a stage feeding nothing but a ``json`` sink's metric is still very much alive.
-#
-# ``metrics:*`` means the key set is data- or config-dependent and cannot be
-# written down: ``histogram`` names its metrics after the chosen colour space, and
-# ``keypoints`` only writes ``descriptor`` on frames where the detector returned
-# one. A consumer must treat those stages as writing an unknown metric.
-#
-# Hand-maintained like STATEFUL, and checked by _demo() in both directions: that
-# the names are real stages, and that `spec.PUBLISHES` never drifts out of it.
-WRITES: dict[str, tuple[str, ...]] = {
-    "canny": ("metrics:edge_px",),
-    "sobel": ("metrics:edge_px",),
-    "laplacian": ("metrics:edge_px",),
-    "hough_lines": ("store:lines", "metrics:lines", "rows:lines"),
-    "hough_circles": ("store:circles", "metrics:circles", "rows:circles"),
-    "harris": ("store:corners", "metrics:corners", "rows:corners"),
-    "shi_tomasi": ("store:corners", "metrics:corners", "rows:corners"),
-    "contours": (
-        "store:contours",
-        "store:contour_mask",
-        "metrics:contours",
-        "metrics:contour_area",
-        "rows:contours",
-    ),
-    "bounding_boxes": ("store:boxes", "metrics:boxes", "rows:boxes"),
-    "blobs": ("metrics:blobs", "rows:blobs"),
-    "keypoints": ("store:keypoints", "store:descriptors", "metrics:*", "rows:keypoints"),
-    "hog": ("store:hog", "metrics:hog_dim", "metrics:hog_mean"),
-    "lbp": ("metrics:lbp_bins", "metrics:lbp_entropy", "rows:lbp"),
-    "histogram": ("store:histogram", "metrics:*", "rows:histogram"),
-    "motion_objects": (
-        "store:boxes",
-        "metrics:motion_px",
-        "metrics:motion_frac",
-        "metrics:motion_objects",
-        "metrics:motion_speed",
-        "rows:motion",
-    ),
-    "motion_heat": ("store:heat",),
-    "static_mask": ("store:mask",),
-    "color_select": ("store:mask",),
-    "roi": ("store:roi",),
-}
-
-
-# Store keys a stage reads without naming them in a parameter — the analysis
-# cannot see these by looking at the spec, because there is nothing in the spec
-# to see. Same maintenance deal as WRITES.
-READS: dict[str, tuple[str, ...]] = {
-    "mean_background": ("store:mask",),
-    "heatmap": ("store:heat",),
-    "bounding_boxes": ("store:contours",),
-    "paste_roi": ("store:roi",),
-}
+from segmentator.pipeline import Ctx, StageInfo, _build_stages, component_or, frame_for
 
 # Parameters whose value names an image a stage reads.
 IMAGE_PARAMS = ("input", "mask", "draw_on")
@@ -104,25 +45,21 @@ IMAGE_PARAMS = ("input", "mask", "draw_on")
 SAMPLE_DEFAULT = 16
 SAMPLE_FLOOR = 8
 
-# Stages whose output pixel is a function of the input pixel alone, so a run of
-# them composes into a single 256-entry table. ``threshold`` qualifies only with
-# ``otsu: false`` — Otsu derives its level from the frame histogram, which makes
-# the mapping frame-dependent. Checked exhaustively before any fusion is
-# proposed, so a wrong entry here costs a rejected candidate, not a wrong answer.
-POINT_OPS = ("brightness_contrast", "gamma", "threshold")
-
-# Parameter values that make a stage a passthrough. Read off the spec, never off
-# a built instance: `Morphology.ksize` and friends are consumed at construction
-# and leave no attribute behind, which is what `spec.rebuild_params` exists for.
-IDENTITY = {
-    "gaussian_blur": {"ksize": (0, 1)},
-    "median_blur": {"ksize": (0, 1)},
-    "gamma": {"value": (1.0, 1)},
-    "saturation": {"gain": (1.0, 1)},
-    "morphology": {"iterations": (0,)},
-}
-
 Progress = Callable[[int, int, str], bool]
+
+
+def _stage_class(type_name: str) -> type[StageInfo]:
+    """The registered stage class for ``type_name``, read via the registry.
+
+    Every per-stage fact this module needs (``STATEFUL``, ``READS``, ``WRITES``,
+    ``POINT_OP``, ``IDENTITY_PARAMS``) is a class attribute declared on that
+    class, so a stage's behavioural contract lives in one place rather than in a
+    parallel hand-maintained table here. An unregistered ``type_name`` — a spec
+    that will not build, or one this module's own structural walks pass a bare
+    string through without checking — falls back to :class:`StageInfo`'s
+    all-empty defaults instead of raising.
+    """
+    return component_or("stage", type_name, StageInfo)
 
 
 @dataclass(frozen=True)
@@ -335,7 +272,7 @@ def named_reads(spec: dict[str, Any]) -> set[str]:
     """Image names this stage resolves through ``frame_for`` — taps and store keys alike."""
     kind = spec.get("type", "")
     names = {spec.get(p, _default(kind, p)) for p in IMAGE_PARAMS if _default(kind, p) is not None or p in spec}
-    names |= {key.partition(":")[2] for key in READS.get(kind, ())}
+    names |= {key.partition(":")[2] for key in _stage_class(kind).READS}
     return {n for n in names if isinstance(n, str)}
 
 
@@ -379,7 +316,7 @@ def dead_stages(specs: Sequence[dict[str, Any]], observed: set[str]) -> list[Fin
         if name is not None and (name in downstream or f"image:{name}" in observed):
             continue
         alive = False
-        for key in WRITES.get(spec.get("type", ""), ()):
+        for key in _stage_class(spec.get("type", "")).WRITES:
             namespace, _, written = key.partition(":")
             if namespace == "store":
                 alive |= written in downstream or f"image:{written}" in observed
@@ -407,8 +344,8 @@ def identity_stages(specs: Sequence[dict[str, Any]]) -> list[Finding]:
     for position, spec in enumerate(specs):
         if spec.get("name"):
             continue  # the tap is still a name something may resolve
-        rules = IDENTITY.get(spec.get("type", ""))
-        if rules is None:
+        rules = _stage_class(spec.get("type", "")).IDENTITY_PARAMS
+        if not rules:
             continue
         values = {p: spec.get(p, _default(spec["type"], p)) for p in rules}
         if all(values[p] in allowed for p, allowed in rules.items()):
@@ -491,7 +428,7 @@ def _point_table(specs: Sequence[dict[str, Any]]) -> np.ndarray | None:
 
 def _is_point_op(spec: dict[str, Any]) -> bool:
     kind = spec.get("type")
-    if kind not in POINT_OPS or spec.get("name"):
+    if not _stage_class(kind).POINT_OP or spec.get("name"):
         return False
     return not (kind == "threshold" and spec.get("otsu", _default("threshold", "otsu")))
 
@@ -571,9 +508,7 @@ def sample_frames(source: Any, count: int = SAMPLE_DEFAULT, contiguous: bool = F
 
 def needs_contiguous(specs: Sequence[dict[str, Any]]) -> bool:
     """Whether this chain remembers anything between frames."""
-    from segmentator.gui.spec import STATEFUL
-
-    return any(spec.get("type") in STATEFUL for spec in specs)
+    return any(_stage_class(spec.get("type", "")).STATEFUL for spec in specs)
 
 
 def apply_findings(specs: Sequence[dict[str, Any]], findings: Sequence[Finding]) -> list[dict[str, Any]]:

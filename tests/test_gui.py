@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from segmentator.gui import spec as spec_module
-from segmentator.gui.spec import CHANNEL_PARAMS, PUBLISHES, STATEFUL, params, rebuild_params
+from segmentator.gui.spec import channel_params, is_stateful, params, publishes, rebuild_params
 from segmentator.pipeline import registered
 
 PyQt6 = pytest.importorskip("PyQt6")
@@ -89,28 +89,29 @@ def test_spec_demo():
     spec_module._demo()
 
 
-def test_every_stateful_name_is_a_real_stage():
-    assert STATEFUL <= set(registered("stage"))
-
-
-def test_stage_info_agrees_with_gui_only_tables():
-    """The class-level attributes (issue #6) agree with this module's own tables.
-
-    STATEFUL, PUBLISHES and CHANNEL_PARAMS live only here (not in optimize.py),
-    so their cross-check against the per-class StageInfo attributes belongs in
-    this GUI-gated file rather than in tests/test_optimize.py, which must stay
-    importable with no optional dependency installed.
-    """
+def test_is_stateful_reads_the_registry():
+    """STATEFUL is gone (issue #15) — is_stateful reads StageInfo off the
+    registered class instead of a hand-maintained set here."""
     from segmentator.pipeline import component
 
-    for name in STATEFUL:
-        assert component("stage", name).STATEFUL is True, name
+    for name in registered("stage"):
+        if name.startswith("_"):
+            continue
+        assert is_stateful(name) == component("stage", name).STATEFUL, name
+    assert is_stateful("nonsense") is False
 
-    for name, keys in PUBLISHES.items():
-        assert component("stage", name).PUBLISHES == keys, name
 
-    for name, params_ in CHANNEL_PARAMS.items():
-        assert component("stage", name).CHANNEL_PARAMS == params_, name
+def test_publishes_and_channel_params_read_the_registry():
+    """PUBLISHES/CHANNEL_PARAMS are gone too — same deal as is_stateful."""
+    from segmentator.pipeline import component
+
+    for name in registered("stage"):
+        if name.startswith("_"):
+            continue
+        assert publishes(name) == component("stage", name).PUBLISHES, name
+        assert channel_params(name) == component("stage", name).CHANNEL_PARAMS, name
+    assert publishes("nonsense") == ()
+    assert channel_params("nonsense") == ()
 
 
 def test_a_stage_without_an_init_has_no_parameters():
@@ -707,14 +708,13 @@ def test_sinks_get_one_unsectioned_card(app, window):
 
 
 def test_a_stateful_stage_carries_its_amber_dot_into_the_dialog(app, window):
-    from segmentator.gui.spec import STATEFUL
     from segmentator.gui.window import AddDialog
 
     dialog = AddDialog(window, "stage")
     for listw in dialog._lists:
         for row in range(listw.count()):
             item = listw.item(row)
-            assert marks(item)["stateful"] == (item.text() in STATEFUL)
+            assert marks(item)["stateful"] == is_stateful(item.text())
 
 
 def test_each_family_wears_its_catalogue_accent(app, window):
