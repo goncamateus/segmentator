@@ -6,9 +6,7 @@
 diff --git a/core/config.py b/core/config.py
 --- a/core/config.py
 +++ b/core/config.py
-@@ -9,8 +9,10 @@ class Config:
-     mask_threshold: int = 127
-     signal_threshold: int = 15
+@@ -11,5 +11,7 @@ class Config:
      white_clip: int = 200
      min_contour_area: float = 20.0
 -    background_frames: int = 60
@@ -17,23 +15,16 @@ diff --git a/core/config.py b/core/config.py
 +    mog2_shadows: bool = False
      display_size: tuple[int, int] = (640, 480)
      headless: bool = False
-     output_path: Path = Path("out1.mp4")
 diff --git a/gasvid_0.py b/gasvid_0.py
 --- a/gasvid_0.py
 +++ b/gasvid_0.py
-@@ -2,9 +2,8 @@
- 
- import cv2
+@@ -4,5 +4,4 @@ import cv2
  import numpy as np
  
 -from core.background_model import BackgroundModel
  from core.config import Config
  from core.preprocessing import preprocess, segment, static_mask
- from core.utils import parse_args, read_frames
- from core.video_writer import FfmpegWriter
-@@ -17,9 +16,13 @@ def run(cfg: Config) -> None:
-         raise OSError(f"Video has no frames: {cfg.video_path}")
- 
+@@ -19,5 +18,9 @@ def run(cfg: Config) -> None:
      smoothed = preprocess(first_frame, cfg.median_ksize)
      mask = static_mask(smoothed, cfg.mask_threshold)
 -    background = BackgroundModel(cfg.background_frames)
@@ -44,11 +35,7 @@ diff --git a/gasvid_0.py b/gasvid_0.py
 +    )
  
      writer = None
-     if cfg.headless:
-         height, width = first_frame.shape[:2]
-@@ -30,11 +33,11 @@ def run(cfg: Config) -> None:
- 
-     for frame in (first_frame, *frames):
+@@ -32,7 +35,7 @@ def run(cfg: Config) -> None:
          smoothed = preprocess(frame, cfg.median_ksize)
          masked = np.where(mask == 255, smoothed, 0).astype(np.uint8)
 -        background.accumulate(masked)
@@ -58,5 +45,3 @@ diff --git a/gasvid_0.py b/gasvid_0.py
 +        result = segment(cv2.bitwise_and(smoothed, foreground), mask, cfg)
  
          if cfg.headless:
-             writer.write(result)
-         else:

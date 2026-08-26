@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import inspect
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 from segmentator import io, stages  # noqa: F401  (importing them fills the registry)
 from segmentator.pipeline import _REGISTRY
 
 HERE = Path(__file__).parent
+ROOT = HERE.parent.parent
 GENERATED = HERE / "generated"
 
 # Sphinx roles and reST literals in the docstrings, rewritten for LaTeX.
@@ -91,12 +94,60 @@ def write(kind: str, grouped: bool) -> int:
     return len(entries)
 
 
+def _loc(*paths: str) -> int:
+    """Physical lines of Python under each path, which is what the paper counts."""
+    total = 0
+    for name in paths:
+        target = ROOT / name
+        files = [target] if target.is_file() else sorted(target.rglob("*.py"))
+        total += sum(len(f.read_text(encoding="utf-8").splitlines()) for f in files)
+    return total
+
+
+def _tests() -> int:
+    """What pytest actually collects — parametrised cases and all.
+
+    Counting ``def test_`` undercounts by the parametrisations, and the number
+    the paper quotes should be the one a reader gets from running the suite.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    match = re.search(r"(\d+) tests? collected", result.stdout)
+    if match is None:
+        raise SystemExit(f"could not read a test count from pytest:\n{result.stdout[-500:]}")
+    return int(match.group(1))
+
+
+def write_compact() -> None:
+    """A names-only view, grouped by family: the catalogue at one sixth the length.
+
+    The full table --- purpose and parameters per component --- is the published
+    documentation's job; what a paper appendix owes a reader is the vocabulary,
+    complete and demonstrably in step with the code.
+    """
+    lines = []
+    for kind in ("stage", "source", "sink"):
+        grouped: dict[str, list[str]] = {}
+        for name, family, _params, _summary in rows(kind, by_family=True):
+            grouped.setdefault(family if kind == "stage" else kind, []).append(name)
+        for family, names in grouped.items():
+            listed = ", ".join(f"\\texttt{{{n.replace('_', chr(92) + '_')}}}" for n in names)
+            lines.append(rf"\textit{{{family}}} & {listed} \\")
+        lines.append(r"\addlinespace")
+    (GENERATED / "catalogue-compact.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main() -> None:
     GENERATED.mkdir(exist_ok=True)
     counts: dict[str, int] = {}
     for kind, grouped in (("stage", True), ("source", False), ("sink", False)):
         counts[kind] = write(kind, grouped)
 
+    write_compact()
     families = sorted({family for _, family, _, _ in rows("stage")})
     macros = [
         rf"\newcommand{{\NumStages}}{{{counts['stage']}}}",
@@ -104,6 +155,10 @@ def main() -> None:
         rf"\newcommand{{\NumSinks}}{{{counts['sink']}}}",
         rf"\newcommand{{\NumFamilies}}{{{len(families)}}}",
         rf"\newcommand{{\FamilyList}}{{{', '.join(f'\\texttt{{{f}}}' for f in families)}}}",
+        rf"\newcommand{{\NumTests}}{{{_tests()}}}",
+        rf"\newcommand{{\RepoLOC}}{{{_loc('segmentator', 'cli.py'):,}}}",
+        rf"\newcommand{{\TestLOC}}{{{_loc('tests'):,}}}",
+        rf"\newcommand{{\NumExamples}}{{{len(list((ROOT / 'examples').glob('*.yaml')))}}}",
     ]
     (GENERATED / "catalogue-numbers.tex").write_text("\n".join(macros) + "\n", encoding="utf-8")
     print(f"{counts} across {len(families)} families: {', '.join(families)}")

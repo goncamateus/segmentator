@@ -1,5 +1,48 @@
 \section{Next phase}
-% INTENT: five items, each tied to a limitation above. Labelled evaluation set
-% and quantitative validation; multi-scene generalisation; parallel and
-% streaming execution; hardening for on-site deployment; using the classical
-% output as bootstrap labels for a learned model.
+\label{sec:next}
+
+Five pieces of work, each answering a specific item in §\ref{sec:limitations},
+in the order they unblock each other.
+
+\paragraph{A labelled evaluation set, and the numbers that follow it.} The
+missing measurement is the one that matters most, and everything else in this
+list is easier to justify once it exists. A few hundred labelled frames spanning
+the conditions the footage actually contains --- plume present and absent, steady
+and gusting, across the lighting the day imposes --- turns ``it visibly separates
+the plume'' into a detection rate at a stated false-alarm rate, and turns recipe
+tuning from a judgement into an optimisation with a target.
+
+\paragraph{Generalisation across scenes.} A second camera and a second
+installation would establish which of the current design assumptions are about
+this problem and which are about this footage. The specific question to answer
+first is whether the fixed region mask and mean background survive a scene where
+the camera moves or the background is not static; if they do not, the adaptive
+subtractors already in the registry are the replacements to measure.
+
+\paragraph{Throughput headroom.} \texttt{\BenchDearestStage} is
+\BenchDearestShare\% of the frame in the motion recipe, so there is one thing to
+attack and its cost is known. Beyond that, frame-level parallelism is the obvious
+next factor and the architecture permits it: a single forward pass over
+independent frames is close to embarrassingly parallel except where a stage holds
+state, and which stages those are is already declared on the stage classes.
+
+\paragraph{Deployment hardening.} Streaming input from a live camera, a
+supervised process that restarts rather than exits, output to somewhere other
+than the local disk, and an alerting path. This is ordinary engineering rather
+than research, and it is deliberately not begun: what it should do depends on
+where it runs, and that is a conversation with whoever runs it.
+
+\paragraph{Classical output as bootstrap labels.} The route to a learned model
+that does not start with a blank labelling tool. A tuned chain over a season of
+footage produces crops, per-object geometry and per-frame scalars; a human
+correcting that output is doing a much cheaper job than a human producing it, and
+the result is the training set that §\ref{sec:validation}'s missing accuracy
+measurement also needs. This is the item that makes the classical pipeline and a
+learned model the same project rather than competing ones.
+
+\bigskip
+\noindent
+The engine is at \url{https://github.com/goncamateus/segmentator} under the MIT
+licence, and everything in this document --- the synthetic media, the
+measurements, the figures, the appendix --- regenerates from
+\texttt{docs/whitepaper/} with a single \texttt{make}.

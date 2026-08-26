@@ -1,7 +1,48 @@
 \section{Limitations and maturity}
-% INTENT: state plainly, as a list. No labelled data, therefore no accuracy,
-% IoU or false-alarm-rate claim anywhere in this document. Validated on one
-% camera and one scene type. Single-threaded CPU only; the GPU in the bench
-% machine is idle. The fixed mean-of-N background assumes a static camera. No
-% online/streaming deployment, no alerting, no calibration to concentration.
-% Maturity: validated on real footage, not deployed --- TRL 4.
+\label{sec:limitations}
+
+The honest summary of where this stands is: validated, not deployed. Concretely.
+
+\paragraph{There is no accuracy claim in this document, anywhere.} No labelled
+ground truth exists for the footage, so there is no intersection-over-union, no
+precision or recall, no false-alarm rate and no detection-limit figure. Every
+number in §\ref{sec:validation} is a throughput or a cost. A reader should treat
+the absence as deliberate: the pipeline visibly separates a plume from a
+background, and how well it does so against a human's judgement is unmeasured.
+
+\paragraph{One camera, one scene type.} Everything here was developed against a
+fixed thermal camera looking at one installation, and validated on synthetic
+media built to resemble it. Generalisation to a different sensor, a different
+spectral band, a moving camera or a cluttered outdoor scene is untested, and
+several of the design choices --- a fixed region mask, a mean-of-$N$ background
+--- assume a static camera and would need replacing rather than retuning.
+
+\paragraph{A recipe is tuned to a scene, and does not travel.}
+Figure~\ref{fig:plume}(e) is the demonstration: the shipped \texttt{motion}
+recipe, run unmodified on a scene it was not tuned for, reports twenty-two
+objects where a reader sees one plume. Nothing is broken --- the parameters are
+simply wrong for that footage. This is the actual operating cost of the approach,
+and the editor exists because of it: the tool makes retuning cheap, it does not
+make it unnecessary.
+
+\paragraph{Single-threaded, CPU only.} One core, one frame at a time. There is a
+GPU in the benchmark machine and the engine never touches it. Frames are
+processed in a single forward pass with no parallelism across frames, stages or
+sinks, and no attempt has been made at any of the three.
+
+\paragraph{Batch, not online.} The engine reads a file and writes files. There is
+no streaming input from a live camera, no alerting, no persistence beyond CSV and
+JSON on disk, and no operator-facing runtime --- the editor is a tuning tool, not
+a control room display. Nothing in the architecture forbids these; none of them
+is written.
+
+\paragraph{No physical calibration.} A plume's segmented area is measured in
+pixels, and its motion in pixels per frame. Converting either into a
+concentration, a flow rate or a leak volume needs sensor calibration, scene
+geometry and a physical model, none of which is in scope here.
+
+\paragraph{Maturity.} By the TRL scale this is a level~4 result: the components
+are validated together in a representative setting, on real footage, with a
+reproducible measurement of what they cost. It is not hardened for on-site
+deployment, has not run unattended, and has no failure-handling story beyond
+raising an exception and stopping.

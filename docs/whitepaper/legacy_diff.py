@@ -74,7 +74,7 @@ def main() -> None:
     stat = _git_diff("--stat", "before", "after")
     parts = [_tidy(stat).rstrip(), ""]
     for name in SHOWN:
-        parts.append(_tidy(_git_diff("-U4", f"before/{name}", f"after/{name}")).rstrip())
+        parts.append(_tidy(_git_diff("-U2", f"before/{name}", f"after/{name}")).rstrip())
     body = "\n".join(parts) + "\n"
     (GENERATED / "legacy-mog2.diff").write_text(body, encoding="utf-8")
     (GENERATED / "legacy-numbers.tex").write_text(_macros(stat) + "\n", encoding="utf-8")

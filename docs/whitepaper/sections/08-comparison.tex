@@ -1,18 +1,29 @@
 \section{What this replaced, and what it does not replace}
-% INTENT: two comparisons. (1) the predecessor: 217 LOC over six files, one
-% hardcoded recipe, measured. (2) deep learning: cost of entry (no labels
-% exist), complementary (this tool is how labels get made), interpretability --
-% and the concession that a trained model with labels and a GPU would very
-% likely win on accuracy.
+
+\subsection{The script it grew out of}
+
+Figure~\ref{fig:diff} puts one change side by side in both architectures:
+replacing the fixed mean background with OpenCV's adaptive MOG2 subtractor. It is
+an ordinary change --- the first thing anyone would try when a scene's lighting
+drifts --- and it is the kind of change that happens several times in an
+afternoon of tuning.
+
+In the predecessor it is \LegacyChanged{} changed lines across \LegacyFiles{}
+files, and one module deleted outright: a field goes out of the config dataclass
+and three come in, an import disappears, the constructor changes shape, and the
+loop body changes because the new subtractor has a different interface from the
+old one. Nothing there is difficult. All of it is the kind of edit that has to be
+reviewed, can be got wrong, and cannot be undone by pressing undo once.
+
+In a config it is one line.
 
 \begin{figure}[t]
   \begin{subfigure}[t]{\textwidth}
     \lstinputlisting[style=diff]{generated/legacy-mog2.diff}
-    \caption{The predecessor architecture: \LegacyChanged{} changed lines
-      across \LegacyFiles{} files, one module deleted outright.
-      \emph{Reconstructed} --- the predecessor never supported MOG2, so this is
-      the equivalent change, not a recovered commit; both trees are in
-      \texttt{docs/whitepaper/legacy/}.}
+    \caption{The predecessor architecture: \LegacyChanged{} changed lines across
+      \LegacyFiles{} files, one module deleted outright. \emph{Reconstructed} ---
+      the predecessor never supported MOG2, so this is the equivalent change, not
+      a recovered commit; both trees are in \texttt{docs/whitepaper/legacy/}.}
   \end{subfigure}
 
   \vspace{4mm}
@@ -23,3 +34,57 @@
   \caption{Swapping a fixed mean background for adaptive MOG2.}
   \label{fig:diff}
 \end{figure}
+
+The comparison that would be dishonest to leave out is the other one. The
+predecessor is \LegacyLOC{} lines; the engine described here is \RepoLOC{}, some
+thirty times larger. Nothing about this approach makes less code. What it does is
+put the code on the other side of a line: the \RepoLOC{} lines are written once
+and then edited rarely, while the thing that changes several times an hour became
+a file that cannot break frame decoding, cannot corrupt the encoder, and can be
+kept, diffed, named and re-run a month later. The predecessor's \LegacyLOC{}
+lines could express exactly one recipe. The registry currently holds
+\NumStages{} stages, \NumSources{} sources and \NumSinks{} sinks, and the number
+of recipes expressible from them is not a number worth writing down.
+
+\subsection{And why not a learned model}
+
+The obvious question about any classical segmentation pipeline in 2026 is why it
+is not a neural network. Three answers, in the order they actually bind.
+
+\paragraph{Cost of entry.} A supervised model needs labelled plume masks, and
+none exist for this footage. Producing them means a person drawing boundaries on
+a soft-edged, semi-transparent cloud across thousands of frames, and agreeing
+with themselves about where the plume ends --- a labelling task with genuine
+ambiguity in it, not a tedious-but-obvious one. The classical chain needs no
+labels at all and ran on day one. For a question whose answer is worth having
+this week, that difference decides it.
+
+\paragraph{This is how the labels would get made.} The output of these recipes is
+already the shape a training set wants: the crops sink cuts every detected object
+out of the frame and writes it as an image, the CSV sink writes one row per object
+with its geometry, and the JSON sink writes per-frame scalars. A tuned classical
+chain over a season of footage is a bootstrap labelling pass, to be corrected by a
+human rather than produced by one. That is a use for this tool alongside a learned
+model, not against it, and it is the concrete route from here to one
+(§\ref{sec:next}).
+
+\paragraph{The failures are legible.} Every parameter here means something
+physical --- a threshold in grey levels, a kernel in pixels, a background over
+$N$ frames --- and every intermediate image can be looked at. When a chain starts
+producing nonsense, §\ref{sec:optimizer}'s per-stage view says which stage, and
+the fix is a number. When a trained model starts producing nonsense on footage
+that drifted away from its training set, the fix is a retraining job and a new
+dataset. Neither is better in general; they fail differently, and the second
+failure mode is worse to be holding at three in the morning.
+
+None of that is an argument that this beats a learned model at segmenting a
+plume. Given labelled data and a GPU, a modern segmentation network would very
+likely be more accurate than anything in this document, and this document
+contains no accuracy measurement with which to argue otherwise. The claim is
+narrower and, for an industrial reader, more useful: this runs today, on footage
+nobody has labelled, on a CPU, at more than real time, and it tells you what it
+did.
+
+% The comparison figure is a full page; flush it before the next section
+% rather than letting it drift past the end of the document.
+\clearpage

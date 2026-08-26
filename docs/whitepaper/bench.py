@@ -108,6 +108,31 @@ def throughput(quick: bool) -> list[dict[str, Any]]:
     return rows
 
 
+# The field footage the project started from. It is not in this repository and
+# no frame of it appears in the paper; the one number measured here says the
+# synthetic figures are not flattering themselves.
+FIELD = ROOT / "inputs" / "gasvid1.mp4"
+FIELD_FRAMES = 900
+
+
+def field_throughput() -> dict[str, float] | None:
+    """ms/frame for each video recipe on the field clip, or None if it is absent."""
+    if not FIELD.exists():
+        return None
+    measured = {}
+    for name in VIDEO_CONFIGS:
+        cfg = paper_config(name, 320, 240)
+        cfg["source"]["path"] = str(FIELD)
+        for sink in cfg["sinks"]:
+            for key in ("path", "dir"):
+                if key in sink:
+                    sink[key] = str(OUT / "field" / name / Path(sink[key]).name)
+        frames, seconds = _run_once(cfg, FIELD_FRAMES)
+        measured[name] = seconds / frames * 1000
+        print(f"  {name:<14} field       {measured[name]:7.2f} ms  {frames / seconds:7.1f} fps")
+    return measured
+
+
 def stage_costs(name: str, width: int, height: int) -> list[tuple[str, float]]:
     """Per-stage ms for one config, reusing the optimizer's interleaved timer."""
     cfg = paper_config(name, width, height)
@@ -232,10 +257,27 @@ def main() -> None:
     OUT.mkdir(exist_ok=True)
     print("throughput:")
     rows = throughput(args.quick)
+    print("field footage:" if FIELD.exists() else "field footage: absent, skipped")
+    field = field_throughput() if not args.quick else None
     print(f"per-stage cost for {COST_CONFIG}:")
     costs = stage_costs(COST_CONFIG, 320, 240)
     for kind, cost in costs:
         print(f"  {kind:<18} {cost:6.2f} ms")
+
+    if field is not None:
+        slowest = max(field, key=lambda name: field[name])
+        (GENERATED / "field-numbers.tex").write_text(
+            "\n".join(
+                [
+                    rf"\newcommand{{\FieldSlowest}}{{{_tex_escape(slowest)}}}",
+                    rf"\newcommand{{\FieldSlowestFps}}{{{1000 / field[slowest]:.0f}}}",
+                    rf"\newcommand{{\FieldFrames}}{{{FIELD_FRAMES}}}",
+                    rf"\newcommand{{\FieldSynthetic}}{{{1000 / max(r['ms'] for r in rows if r['config'] == slowest and r['width'] == 320):.0f}}}",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     write_throughput(rows)
     write_stage_costs(costs)
