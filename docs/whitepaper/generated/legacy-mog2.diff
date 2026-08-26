@@ -1,0 +1,47 @@
+ core/background_model.py => /dev/null | 28 ----------------------------
+ core/config.py             |  4 +++-
+ gasvid_0.py                | 11 +++++++----
+ 3 files changed, 10 insertions(+), 33 deletions(-)
+
+diff --git a/core/config.py b/core/config.py
+--- a/core/config.py
++++ b/core/config.py
+@@ -11,5 +11,7 @@ class Config:
+     white_clip: int = 200
+     min_contour_area: float = 20.0
+-    background_frames: int = 60
++    mog2_history: int = 300
++    mog2_var_threshold: float = 24.0
++    mog2_shadows: bool = False
+     display_size: tuple[int, int] = (640, 480)
+     headless: bool = False
+diff --git a/gasvid_0.py b/gasvid_0.py
+--- a/gasvid_0.py
++++ b/gasvid_0.py
+@@ -4,5 +4,4 @@ import cv2
+ import numpy as np
+ 
+-from core.background_model import BackgroundModel
+ from core.config import Config
+ from core.preprocessing import preprocess, segment, static_mask
+@@ -19,5 +18,9 @@ def run(cfg: Config) -> None:
+     smoothed = preprocess(first_frame, cfg.median_ksize)
+     mask = static_mask(smoothed, cfg.mask_threshold)
+-    background = BackgroundModel(cfg.background_frames)
++    background = cv2.createBackgroundSubtractorMOG2(
++        history=cfg.mog2_history,
++        varThreshold=cfg.mog2_var_threshold,
++        detectShadows=cfg.mog2_shadows,
++    )
+ 
+     writer = None
+@@ -32,7 +35,7 @@ def run(cfg: Config) -> None:
+         smoothed = preprocess(frame, cfg.median_ksize)
+         masked = np.where(mask == 255, smoothed, 0).astype(np.uint8)
+-        background.accumulate(masked)
++        foreground = background.apply(masked)
+ 
+-        result = segment(background.subtract(smoothed), mask, cfg)
++        result = segment(cv2.bitwise_and(smoothed, foreground), mask, cfg)
+ 
+         if cfg.headless:

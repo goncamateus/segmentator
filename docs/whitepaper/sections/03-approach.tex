@@ -1,0 +1,64 @@
+\section{Approach: the config is the program}
+
+A pipeline is three things: a \emph{source} to read frames from, an ordered list
+of \emph{stages} to apply to each one, and one or more \emph{sinks} to hand the
+result to. That is the whole model, and it is described in a YAML file rather
+than assembled in Python.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/pipeline-anatomy.pdf}
+  \caption{A pipeline: one source, an ordered list of stages, one or more sinks,
+    and the per-frame \texttt{Ctx} that carries state between them.}
+  \label{fig:anatomy}
+\end{figure}
+
+Listing~\ref{lst:baseline} is the recipe the predecessor hardcoded, written as a
+config. It is not a simplified version for the paper --- it is
+\texttt{examples/baseline.yaml} from the repository, included here by path.
+
+\lstinputlisting[
+  style=yaml, lastline=32,
+  caption={The predecessor's recipe as a config, from
+  \texttt{examples/baseline.yaml} (the file's last few lines, commented-out
+  alternative sinks, are omitted).},
+  label={lst:baseline}, basicstyle=\ttfamily\scriptsize\color{ink}
+]{../../examples/baseline.yaml}
+
+Three properties of that file matter more than its syntax.
+
+\paragraph{The order is the composition.} Nothing in the file says how the stages
+combine, because their position says it. \texttt{static\_mask} publishes a mask
+and the \texttt{apply\_mask} below it consumes one; move the second above the
+first and the pipeline no longer does the same thing --- not because a flag
+changed, but because a different array reached a different operator. There is no
+runtime branching anywhere in a pipeline run and no conditional a config can set:
+a stage list is applied front to back, once per frame, and that is the entire
+control flow. Section~\ref{sec:architecture} shows what this buys and what it
+costs.
+
+\paragraph{Names come from a registry, and only from there.} Every stage, source
+and sink registers itself under a name as it is defined:
+
+\begin{lstlisting}[style=yaml, basicstyle=\ttfamily\small\color{ink}]
+@register("stage", "median_blur")
+class MedianBlur:
+    def __init__(self, ksize: int = 7): ...
+\end{lstlisting}
+
+\noindent
+\texttt{build()} turns a \texttt{\{type: median\_blur, ksize: 7\}} mapping into
+an instance, and a name that is not in the registry raises an error listing the
+names that are. That single table is what defines the config schema, what
+generates the editor's palette and every parameter form in it (§\ref{sec:editor}),
+and what produces the error messages --- so a new operator becomes available to
+all three at once, and nothing about it is declared twice. There is no schema
+file to keep in step, because the schema is the code.
+
+\paragraph{A config is a whole run, not a fragment.} The file names its own
+inputs and outputs, so running it takes no arguments:
+\texttt{segmentator examples/baseline.yaml}. Three overrides exist for the cases
+that come up in a batch --- \texttt{-{}-video} and \texttt{-{}-output} retarget
+the source and the first encoder, \texttt{-{}-max-frames} cuts the run short ---
+and they are deliberately the only ones. Anything else worth changing is worth
+changing in the file, where it is recorded.

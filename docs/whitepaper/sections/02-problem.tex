@@ -1,0 +1,39 @@
+\section{The problem}
+
+This project began with twenty-seven minutes of thermal video: $320\times240$
+pixels, 15~frames per second, a fixed camera, and somewhere in the frame a gas
+plume that had to be pulled out of it.
+
+A plume is an awkward thing to segment. It has no edges to detect, because its
+boundary is where it stops being denser than the air behind it. It has no shape
+to match, because it has a new shape in every frame. It has no colour to key on,
+because a thermal sensor gives one channel and the plume sits a few grey levels
+above the background it drifts across. What it does have is that it moves while
+the rest of the scene does not, and that it changes the statistics of the pixels
+it passes over. Every method worth trying is a way of exploiting one of those two
+facts, and which combination works is not something anyone can tell you from a
+description of the footage.
+
+The first working answer was a script, and it worked: mask the region of interest,
+average the first sixty frames into a fixed background, subtract it, threshold
+twice to drop the noise floor and clip the reflections. \LegacyLOC{}~lines across
+\LegacyModules{} modules, and a plume on the screen.
+
+The trouble was everything that came after it. Would an adaptive subtractor beat
+the fixed mean once the sun moved? What does the plume look like if the contrast
+is lifted before subtraction rather than after? How many objects does the frame
+break into if the morphological opening uses a $5\times5$ kernel instead of
+$3\times3$? Every one of those questions is a question about the footage, and
+every one of them was answered by editing a Python file that also owned frame
+decoding, the region mask and the video writer. The recipe and the machinery were
+the same code, so exploring the first meant risking the second --- and comparing
+two answers meant either keeping two copies of the script or losing the first one
+to get the second.
+
+That is not a gas problem. It is the shape of most of this kind of work: the
+machinery is nearly constant --- read frames in order, apply operators in
+sequence, write out images and measurements --- while the recipe changes several
+times an hour for as long as anyone is still looking at the footage. The
+predecessor had them fused, which is why it had a ceiling. Everything in this
+document follows from separating them, and from one decision about which side of
+the line the recipe belongs on: it is data, not code.

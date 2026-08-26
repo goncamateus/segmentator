@@ -1,0 +1,35 @@
+\section{Executive summary}
+
+Segmentator is an engine for image and video segmentation in which the method is
+a configuration file rather than a program. It began as one hardcoded script for
+pulling a gas plume out of thermal video; generalising that script into a
+declarative \texttt{source $\rightarrow$ stages $\rightarrow$ sinks} format is
+the whole of the project. An operator composes a recipe from \NumStages{}
+classical operators, tunes it against live footage in a visual editor, and the
+same file then runs unattended over a batch. Changing the method --- a different
+background model, a different detector, a different order --- is an edit to that
+file, reviewed and re-run in seconds, rather than an edit to the code that also
+owns frame decoding and video encoding.
+
+What this document reports is a working engine, measured. It runs faster than
+real time at field resolution on a single CPU core, its component catalogue and
+every number printed here are generated from the code itself, and all of it
+reproduces from the repository with one command. What it does not report is
+detection accuracy: no labelled ground truth exists for this footage, so this
+paper contains no detection rate, no false-alarm rate and no comparison against a
+learned model. §\ref{sec:limitations} states that boundary and the rest of them
+plainly.
+
+\begin{itemize}
+  \item A segmentation recipe is a YAML file: changing the method is a config
+        edit, not a code edit.
+  \item \NumStages{} operators across \NumFamilies{} families compose by ordering
+        alone --- no runtime branching, no feature flags.
+  \item An operator tunes the chain visually with a live per-stage preview, and
+        the same file then runs headless in batch.
+  \item The tool audits its own chains: it proves what can be proved, samples the
+        rest, and says out loud which is which.
+  \item Real time at field resolution on one CPU core and no GPU: every video
+        recipe clears 15~fps at $320\times240$, the slowest
+        (\texttt{\BenchSlowestVideo}) at \BenchSlowestVideoFps~fps.
+\end{itemize}

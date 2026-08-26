@@ -1,0 +1,11 @@
+--- a/examples/baseline.yaml
++++ b/examples/baseline.yaml
+@@ -18,7 +18,7 @@
+   - {type: static_mask, threshold: 127, invert: true}
+ 
+   # Averages the first 60 masked frames, then subtracts that mean from every frame.
+-  - {type: mean_background, n_frames: 60, use_mask: true}
++  - {type: mog2, history: 300, var_threshold: 24, detect_shadows: false}
+   - {type: apply_mask, fill: 0, name: masked}
+ 
+   # tozero keeps the magnitude of pixels above the level and zeroes the rest;

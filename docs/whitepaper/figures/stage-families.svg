@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 654" width="920" height="654" font-family="Libertinus Sans, sans-serif">
+  <title>The stage catalogue, by family</title>
+  <rect width="920" height="654" fill="#f5f7fa"/>
+  <text x="24" y="26" font-size="13" font-weight="600" fill="#3e4c59">43 stages. Each one is a `{type: ..., **params}` line, and the order they are written in is the composition.</text>
+  <g transform="translate(24 44)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#1f6feb"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#1f6feb">Adjust</text>
+    <text x="14" y="50" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">brightness_contrast</text>
+    <text x="14" y="65" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">saturation</text>
+    <text x="14" y="80" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">gamma</text>
+    <text x="14" y="95" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">lut</text>
+    <text x="14" y="110" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">gray</text>
+    <text x="14" y="125" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">colorspace</text>
+    <text x="14" y="140" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">resize</text>
+    <text x="14" y="155" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">select</text>
+  </g>
+  <g transform="translate(248 44)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#1f6feb"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#1f6feb">Blur / morphology</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">median_blur</text>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">gaussian_blur</text>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">clahe</text>
+    <text x="14" y="103" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">morphology</text>
+  </g>
+  <g transform="translate(472 44)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#1f6feb"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#1f6feb">Threshold</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">threshold</text>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">adaptive_threshold</text>
+  </g>
+  <g transform="translate(696 44)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#1f6feb"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#1f6feb">Region of interest</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">roi</text>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">paste_roi</text>
+  </g>
+  <g transform="translate(24 230)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#5b21b6"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#5b21b6">Edges</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">canny</text>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">sobel</text>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">laplacian</text>
+  </g>
+  <g transform="translate(248 230)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#5b21b6"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#5b21b6">Geometry</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">hough_lines</text>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">hough_circles</text>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">harris</text>
+    <text x="14" y="103" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">shi_tomasi</text>
+    <text x="14" y="120" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">contours</text>
+    <text x="14" y="137" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">bounding_boxes</text>
+    <text x="14" y="154" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">blobs</text>
+  </g>
+  <g transform="translate(472 230)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#5b21b6"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#5b21b6">Keypoints</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">keypoints (sift | orb)</text>
+  </g>
+  <g transform="translate(696 230)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#5b21b6"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#5b21b6">Texture / colour</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">hog</text>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">lbp</text>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">histogram</text>
+  </g>
+  <g transform="translate(24 416)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#1f8a70"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#1f8a70">Masking</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">static_mask</text>
+    <circle cx="188" cy="48" r="4" fill="#f0b429"/>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">apply_mask</text>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">mean_background</text>
+    <circle cx="188" cy="82" r="4" fill="#f0b429"/>
+    <text x="14" y="103" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">color_select</text>
+  </g>
+  <g transform="translate(248 416)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#b44d12"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#b44d12">Motion — models</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">mog2</text>
+    <circle cx="188" cy="48" r="4" fill="#f0b429"/>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">knn</text>
+    <circle cx="188" cy="65" r="4" fill="#f0b429"/>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">frame_diff</text>
+    <circle cx="188" cy="82" r="4" fill="#f0b429"/>
+    <text x="14" y="103" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">three_frame_diff</text>
+    <circle cx="188" cy="99" r="4" fill="#f0b429"/>
+  </g>
+  <g transform="translate(472 416)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#b44d12"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#b44d12">Motion — flow</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">farneback</text>
+    <circle cx="188" cy="48" r="4" fill="#f0b429"/>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">lucas_kanade</text>
+    <circle cx="188" cy="65" r="4" fill="#f0b429"/>
+  </g>
+  <g transform="translate(696 416)">
+    <rect width="206" height="168" rx="6" fill="#fff" stroke="#cbd2d9"/>
+    <rect width="206" height="4" rx="2" fill="#b44d12"/>
+    <text x="14" y="30" font-size="12" font-weight="600" fill="#b44d12">Motion — after</text>
+    <text x="14" y="52" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">motion_heat</text>
+    <circle cx="188" cy="48" r="4" fill="#f0b429"/>
+    <text x="14" y="69" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">heatmap</text>
+    <text x="14" y="86" font-size="11" font-family="Libertinus Mono, monospace" fill="#3e4c59">motion_objects</text>
+    <circle cx="188" cy="82" r="4" fill="#f0b429"/>
+  </g>
+  <g transform="translate(24 608)" font-size="11">
+    <circle cx="8" cy="8" r="4" fill="#f0b429"/>
+    <text x="20" y="12" fill="#52606d">carries state between frames — the one thing a stage may keep, and what the editor resets rather than re-feed while you tune it</text>
+  </g>
+  <text x="24" y="642" font-size="11" fill="#7b8794">Sources: video, image, folder.   Sinks: display, ffmpeg, image, csv, json, crops.</text>
+</svg>

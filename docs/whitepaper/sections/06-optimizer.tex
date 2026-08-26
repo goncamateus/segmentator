@@ -1,0 +1,88 @@
+\section{Auditing a chain: proof, and the refusal to claim it}
+\label{sec:optimizer}
+
+A chain tuned by hand is a ratchet. A stage goes in to fix what is on screen, a
+slider moves, another stage goes on top of it, and nothing is ever taken back
+out. Three edits later the stage that was load-bearing contributes nothing, and
+nobody can tell by looking --- removing it to find out means losing the chain
+that currently works. So the stage stays, and the next one is added on top.
+
+The editor can analyse a chain and propose a shorter one that produces the same
+output. What makes this worth a section is not that it finds redundancy, but that
+it distinguishes two kinds of finding that are usually presented as one, and
+refuses to dress the weaker kind as the stronger.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Every finding the optimizer returns for a deliberately ratcheted
+    \OptStages{}-stage chain: \OptProved{} proved and \OptSampled{} sampled.
+    It leaves \OptKept{} stages alone (\OptKeptList{}).}
+  \label{tab:findings}
+  \begin{tabular}{@{}l p{0.30\textwidth} l p{0.26\textwidth} r@{}}
+    \toprule
+    Position & Proposal & Basis & Argument & Saved (ms) \\
+    \midrule
+    \inputrows{generated/optimize-findings.tex}
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{What can be proved}
+
+The first \OptProved{} rows of Table~\ref{tab:findings} are sound by
+construction, and none of them needed a single frame of video to establish.
+
+\texttt{morphology} at position~8 has \texttt{iterations: 0}. A stage
+parameterised into being a passthrough is a passthrough for every possible input,
+and the parameter values that do this are declared on the stage class rather than
+guessed at by the analysis.
+
+\texttt{canny} at position~4 has its output discarded: the \texttt{apply\_mask}
+below it reads the source frame and a published mask, not the working image, so
+whatever \texttt{canny} produced is overwritten unread. That is a dataflow
+argument over the config, and it holds no matter what the pixels are. The same
+walk finds the second \texttt{gray} at position~1, applied to an image that is
+already single-channel.
+
+The three per-pixel stages at positions 9--11 collapse into one lookup table, and
+this is the strongest claim in the table: the fused table is built by running the
+three operators over all 256 possible input values and recording the result, so
+the replacement is verified exhaustively over the whole input domain rather than
+argued about. It is not ``these look equivalent''; it is ``there is no input on which
+they differ.''
+
+\subsection{What cannot}
+
+The remaining \OptSampled{} rows come from a different procedure: drop the stage,
+re-run the chain over \OptFrames{} sampled frames, and compare everything the
+sinks can observe. When nothing differs, the only honest statement is
+\emph{no counterexample was found in \OptFrames{} frames}, and that is exactly
+what the tool reports. It is falsification, not proof.
+
+The sample size is not a detail. On the chain this analysis was first built
+against, one stage looked redundant at four sampled frames and was demonstrably
+load-bearing at eight. The tool therefore refuses to answer below a floor of
+eight frames rather than answer badly, and a chain that holds state is sampled
+over a contiguous run rather than scattered frames --- a background model handed
+six frames from six different minutes has not seen the history its output
+depends on.
+
+The last row of the table is the argument for all of this. The optimizer proposes
+dropping \texttt{mean\_background} --- the fixed background subtraction that is
+the entire reason this recipe exists --- because on all \OptFrames{} sampled
+frames the pixels the sink received were identical with it and without it. The
+finding is not a bug. It is a true and correctly-labelled statement about sixteen
+frames, and it is useless as advice. A reader of that row knows in one second
+what no amount of sampling would establish; the tool's job is to hand them the
+row with an honest label on it, not to pretend the label says something else.
+
+Hence the last rule: nothing here is ever applied automatically. The analysis
+proposes, a human accepts, and accepting several findings at once re-checks them
+together --- because findings that each hold alone do not necessarily hold in
+combination. The measured saving attached to each row comes from timing every
+stage once inside a single interleaved pass rather than timing whole candidate
+chains against each other, which does not survive contact with a warm cache: the
+same chain over the same frames measured 77~ms cold and 40~ms after the search
+had been hammering those arrays for fifteen seconds, a drift far larger than most
+of the stages being priced.

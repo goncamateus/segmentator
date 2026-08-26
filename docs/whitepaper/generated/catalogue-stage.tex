@@ -1,0 +1,56 @@
+\multicolumn{3}{l}{\itshape color} \\
+\texttt{color\_select} & Band-pass filter per channel in a chosen colour space & space='hsv', ch0=(0, 255), ch1=(0, 255), ch2=(0, 255), fill=0 \\
+\texttt{histogram} & Per-channel histograms for \texttt{bgr}, \texttt{hsv} or \texttt{lab} & space='bgr', replace=False \\
+\addlinespace
+\multicolumn{3}{l}{\itshape keypoints} \\
+\texttt{keypoints} & Detect and draw keypoints & detector='sift', max=500, sensitivity=0.5, octaves=3, edge=10.0, rich=True, draw\_on='source' \\
+\addlinespace
+\multicolumn{3}{l}{\itshape mask} \\
+\texttt{apply\_mask} & Zero (or fill) everything outside a binary mask, in a chosen image & input='image', mask='mask', fill=0 \\
+\texttt{mean\_background} & Subtract the mean of the last \texttt{n\_frames} — a background estimate & n\_frames=60, use\_mask=True, buffer='static' \\
+\texttt{static\_mask} & Fit a fixed region-of-interest mask on the first frame it sees & threshold=127, invert=True \\
+\addlinespace
+\multicolumn{3}{l}{\itshape motion} \\
+\texttt{farneback} & Dense Farneback optical flow, as a 0..255 magnitude image & pyr\_scale=0.5, levels=3, winsize=15, iterations=3, gain=32.0 \\
+\texttt{frame\_diff} & Absolute difference against the frame \texttt{lag} positions back & lag=1 \\
+\texttt{heatmap} & Paint the accumulated heat over a frame as a JET overlay & opacity=0.5, threshold=0.05, draw\_on='source' \\
+\texttt{knn} & OpenCV KNN adaptive background subtractor. Outputs a foreground mask & history=500, dist2\_threshold=400.0, detect\_shadows=False, learning\_rate=-1.0, drop\_shadows=False \\
+\texttt{lucas\_kanade} & Sparse Lucas-Kanade flow at tracked corners, splatted into a dense image & max\_points=200, win=15, gain=32.0 \\
+\texttt{mog2} & OpenCV MOG2 adaptive background subtractor. Outputs a foreground mask & history=500, var\_threshold=16.0, detect\_shadows=False, learning\_rate=-1.0, drop\_shadows=False \\
+\texttt{motion\_heat} & Accumulate the current heat image over a rolling window & window=20 \\
+\texttt{motion\_objects} & Turn a motion mask into objects: boxes, areas and per-frame speeds & min\_area=50.0, max\_travel=60.0, boxes=True, labels=False, draw\_on='source' \\
+\texttt{three\_frame\_diff} & Three-frame differencing: changed *and* still changing & -- \\
+\addlinespace
+\multicolumn{3}{l}{\itshape preprocess} \\
+\texttt{adaptive\_threshold} & Per-neighbourhood threshold, for frames whose lighting is not uniform & method='gaussian', block=11, c=2.0, invert=False \\
+\texttt{brightness\_contrast} & Additive offset and multiplicative gain, in one pass & brightness=0, contrast=1.0 \\
+\texttt{clahe} & Contrast-limited adaptive histogram equalisation on a grayscale frame & clip\_limit=2.0, tile\_grid=(8, 8) \\
+\texttt{colorspace} & Convert the frame to another colour space, e.g. \texttt{to: hsv} or \texttt{to: lab} & to \\
+\texttt{gamma} & Gamma correction through a cached 256-entry LUT. \texttt{<1} darkens, \texttt{>1} lifts & value=1.0 \\
+\texttt{gaussian\_blur} & Gaussian smoothing. \texttt{ksize} is clamped odd; \texttt{sigma=0} derives it from ksize & ksize=5, sigma=0.0 \\
+\texttt{gray} & Convert BGR to grayscale. No-op if the frame is already single-channel & -- \\
+\texttt{lut} & Map every pixel value through a 256-entry table & table=None \\
+\texttt{median\_blur} & Median smoothing. \texttt{ksize} is clamped to the nearest odd value & ksize=7 \\
+\texttt{morphology} & Morphological op — \texttt{open}, \texttt{close}, \texttt{erode}, \texttt{dilate}, \texttt{gradient},  & op='open', ksize=3, iterations=1 \\
+\texttt{paste\_roi} & Put the analysed region back into the full frame, and fix up the rows & border=True, draw\_on='source' \\
+\texttt{resize} & Resize to \texttt{size: [width, height]} & size \\
+\texttt{roi} & Crop to a rectangle, so everything downstream measures only that region & x=0, y=0, w=0, h=0 \\
+\texttt{saturation} & Scale the HSV saturation channel. \texttt{gain: 1.0} is identity. BGR only & gain=1.0 \\
+\texttt{select} & Rebind \texttt{ctx.image} to an earlier image, so the chain can branch & input='source' \\
+\texttt{threshold} & Threshold the frame & value=127, mode='binary', maxval=255, otsu=False \\
+\addlinespace
+\multicolumn{3}{l}{\itshape structure} \\
+\texttt{blobs} & SimpleBlobDetector with the area, circularity and convexity filters & min\_area=50.0, max\_area=5000.0, circularity=0.0, convexity=0.0, dark=True, draw\_on='source' \\
+\texttt{bounding\_boxes} & Draw axis-aligned boxes around contours above \texttt{min\_area} & min\_area=20.0, color=(0, 255, 0), thickness=2, draw\_on='source' \\
+\texttt{canny} & Canny edge detector. Emits a single-channel binary edge map & lo=100, hi=200 \\
+\texttt{contours} & Find contours above \texttt{min\_area} and draw them & min\_area=20.0, mode='external', color=(161, 177, 247), thickness=2, boxes=False, draw\_on='source' \\
+\texttt{harris} & Harris corner response, thresholded and capped at the strongest \texttt{max} & k=0.04, quality=0.01, max=200, draw\_on='source' \\
+\texttt{hough\_circles} & Hough circle transform, drawn as outlines & dp=1.0, min\_dist=50, param1=200, param2=120, draw\_on='source' \\
+\texttt{hough\_lines} & Probabilistic Hough line transform, drawn as segments & canny\_lo=100, canny\_hi=200, threshold=120, min\_len=50, max\_gap=10, draw\_on='source' \\
+\texttt{laplacian} & Laplacian second derivative, scaled back to uint8 & ksize=3 \\
+\texttt{shi\_tomasi} & Shi-Tomasi "good features to track" corners & max=200, quality=0.01, min\_dist=10, draw\_on='source' \\
+\texttt{sobel} & Sobel derivative magnitude, scaled back to uint8 & ksize=3, dx=1, dy=1 \\
+\addlinespace
+\multicolumn{3}{l}{\itshape texture} \\
+\texttt{hog} & Histogram of Oriented Gradients. Emits the gradient visualisation & orientations=9, cell=8, block=2 \\
+\texttt{lbp} & Local Binary Patterns. Emits the code image, stretched for display & points=8, radius=1, method='uniform' \\

@@ -1,0 +1,178 @@
+% Segmentator white paper. Build with `make pdf` (LuaLaTeX inside the TeX Live
+% image); every number, table and catalogue row it \inputs comes out of
+% generated/ and is written by bench.py, figures.py or catalogue.py.
+\documentclass[11pt, a4paper, DIV=11, parskip=half-]{scrartcl}
+
+\usepackage{fontspec}
+\setmainfont{Libertinus Serif}
+\setsansfont{Libertinus Sans}
+\setmonofont{Libertinus Mono}[Scale=MatchLowercase]
+
+\usepackage[english]{babel}
+\usepackage{microtype}
+\usepackage[a4paper, margin=28mm, bottom=32mm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.18}
+
+% The palette is the documentation diagrams' own, so a restyled SVG and the
+% page it sits on are the same design rather than two.
+\definecolor{ink}{HTML}{1F2933}
+\definecolor{muted}{HTML}{52606D}
+\definecolor{rule}{HTML}{CBD2D9}
+\definecolor{accent}{HTML}{1F6FEB}
+\definecolor{amber}{HTML}{B44D12}
+\definecolor{green}{HTML}{1F8A70}
+\definecolor{violet}{HTML}{5B21B6}
+
+\usepackage[colorlinks=true, allcolors=accent]{hyperref}
+
+\addtokomafont{disposition}{\sffamily\color{ink}}
+\addtokomafont{caption}{\small\color{muted}}
+\addtokomafont{captionlabel}{\bfseries\color{ink}}
+\setcapindent{0pt}
+
+\usepackage[backend=biber, style=numeric, sorting=none, maxbibnames=8]{biblatex}
+\addbibresource{bib/refs.bib}
+
+% --- code and diff listings ------------------------------------------------ %
+\lstdefinestyle{yaml}{
+  basicstyle=\ttfamily\footnotesize\color{ink},
+  commentstyle=\color{muted}\itshape,
+  keywordstyle=\color{violet},
+  columns=fullflexible, breaklines=true, frame=none, showstringspaces=false,
+  morecomment=[l]{\#},
+}
+\lstdefinelanguage{diff}{
+  % [f] anchors each marker to column 0. A line-scoped delimiter would match the
+  % `-` that starts every YAML list item and paint the context lines red.
+  morecomment=[f][\color{green}]{+},
+  morecomment=[f][\color{amber}]{-},
+  morecomment=[f][\color{accent}]{@@},
+  morecomment=[f][\color{muted}\itshape]{diff\ },
+}
+\lstdefinestyle{diff}{
+  language=diff,
+  basicstyle=\ttfamily\scriptsize\color{ink},
+  columns=fullflexible, breaklines=false, frame=none, showstringspaces=false,
+  aboveskip=2pt, belowskip=2pt,
+}
+\lstset{style=yaml}
+
+% Table rows come from generated/ via the TeX primitive, not LaTeX's \input:
+% LaTeX's wraps the file in a way that leaves a token between the last \\ and
+% the following \bottomrule, and booktabs' \noalign then lands mid-row.
+\makeatletter
+\newcommand{\inputrows}[1]{\@@input #1 }
+\makeatother
+
+% --- generated inputs: numbers the prose quotes ---------------------------- %
+\input{generated/numbers.tex}
+\input{generated/catalogue-numbers.tex}
+\input{generated/optimize-numbers.tex}
+\input{generated/legacy-numbers.tex}
+
+% The field-footage confirmation is the one measurement that needs media not in
+% this repository. Without it the sentence that quotes it is left out entirely,
+% rather than the document carrying a number nobody can reproduce.
+\newif\iffieldnumbers
+\IfFileExists{generated/field-numbers.tex}{\input{generated/field-numbers.tex}\fieldnumberstrue}{}
+
+\title{Segmentator: Configuration-Driven Segmentation Pipelines for Industrial Video}
+\subtitle{Composing \NumStages{} classical operators without writing code}
+\author{Mateus G. Machado}
+\date{August 2026}
+
+\begin{document}
+
+% --------------------------------------------------------------------------- %
+% Title page
+% --------------------------------------------------------------------------- %
+\begin{titlepage}
+\sffamily
+\noindent{\color{accent}\rule{\textwidth}{2.5pt}}\par
+\vspace{2cm}
+
+\noindent{\Huge\bfseries\color{ink} Segmentator}\par
+\vspace{6mm}
+\noindent{\LARGE\color{ink} Configuration-Driven Segmentation\\Pipelines for Industrial Video}\par
+\vspace{5mm}
+\noindent{\large\color{muted} Composing \NumStages{} classical operators without writing code}\par
+
+\vspace{2.4cm}
+\noindent{\large\color{ink} Mateus G. Machado}\par
+\vspace{2mm}
+\noindent{\color{muted} SENAI Institute for Innovation in Information\\
+and Communication Technologies (ISI-TICs)\\
+Recife, Brazil}\par
+
+\vfill
+\noindent{\color{rule}\rule{\textwidth}{0.6pt}}\par
+\vspace{3mm}
+\noindent\begin{minipage}[t]{0.48\textwidth}
+  \small\color{muted}
+  Version 0.5.1 \quad August 2026\\
+  Software: \href{https://github.com/goncamateus/segmentator}{github.com/goncamateus/segmentator}\\
+  released under the MIT licence
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+  \small\color{muted}
+  This document is licensed \href{https://creativecommons.org/licenses/by/4.0/}{CC BY 4.0}.\\
+  Code excerpts remain under the MIT licence.
+\end{minipage}
+\end{titlepage}
+
+% --------------------------------------------------------------------------- %
+% Sections only: the subsection level spills the contents onto a second page
+% and earns nothing in a document this size.
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+
+\begin{abstract}
+\noindent
+Segmenting a gas plume from low-resolution thermal video admits no single correct
+method: the plume has no stable edge, shape or colour, and which combination of
+classical operators works is an empirical question about the footage. The
+predecessor to this work answered it with a hardcoded script, which fused the
+recipe with the machinery and made every further question a code edit. This paper
+describes Segmentator, an engine in which the recipe is a declarative
+\texttt{source $\rightarrow$ stages $\rightarrow$ sinks} configuration over
+\NumStages{} registered operators, composed by ordering alone with no runtime
+branching, authored in a visual editor generated from the same registry the
+batch runner builds from. The engine additionally audits its own chains,
+separating findings it can prove from findings it can only fail to falsify. On
+one CPU core with no GPU, every video recipe exceeds the 15~fps field frame rate
+at $320\times240$, the slowest at \BenchSlowestVideoFps~fps. No labelled ground
+truth exists for this footage, so no detection accuracy is claimed.
+
+\vspace{2mm}
+\noindent\textbf{Keywords:} video segmentation; configuration-driven pipelines;
+classical computer vision; thermal imaging; gas plume detection; reproducibility.
+\end{abstract}
+
+\input{sections/01-executive-summary.tex}
+\input{sections/02-problem.tex}
+\input{sections/03-approach.tex}
+\input{sections/04-architecture.tex}
+\input{sections/05-editor.tex}
+\input{sections/06-optimizer.tex}
+\input{sections/07-validation.tex}
+\input{sections/08-comparison.tex}
+\input{sections/09-limitations.tex}
+\input{sections/10-next-phase.tex}
+
+\printbibliography[heading=bibnumbered]
+
+\appendix
+\input{sections/appendix-catalogue.tex}
+
+\end{document}

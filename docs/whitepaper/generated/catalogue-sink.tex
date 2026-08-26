@@ -1,0 +1,6 @@
+\texttt{crops} & Cut every row's \texttt{x/y/w/h} rectangle out of a frame and save it & dir, kind='contours', input='source', pad=0 \\
+\texttt{csv} & Write \texttt{ctx.rows} to one CSV per kind, with a \texttt{frame} column prepended & dir, kinds=() \\
+\texttt{display} & Show frames in an OpenCV window; returns \texttt{False} when the quit key is hit & input='image', window=None, size=None, delay=1, quit\_key='q' \\
+\texttt{ffmpeg} & Encode frames to an mp4 via \texttt{FfmpegWriter} & path, input='image', fps=None \\
+\texttt{image} & Write one image file per frame & path, input='image' \\
+\texttt{json} & Write one JSON object of \texttt{ctx.metrics} per frame, newline-delimited & path \\
