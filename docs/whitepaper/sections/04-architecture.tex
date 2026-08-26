@@ -1,0 +1,28 @@
+\section{Architecture}
+% INTENT: Ctx and its four output channels; why store and taps are separate;
+% why nothing branches on runtime state; what a Stage and a Sink must do.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/stage-families.pdf}
+  \caption{The \NumStages{} registered stages, grouped as the editor's palette
+    groups them for browsing. The source tree divides them differently, into the
+    \NumFamilies{} modules the appendix is organised by: \FamilyList{}.}
+  \label{fig:families}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{figures/ordering-edges-first.png}
+    \caption{\texttt{canny} then \texttt{harris}: corners drawn onto the edge map.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{figures/ordering-corners-first.png}
+    \caption{\texttt{harris} then \texttt{canny}: the corner markers are reduced
+      to outlines, and an extra \texttt{gray} is needed to get there.}
+  \end{subfigure}
+  \caption{Ordering is the composition. The same two operators in opposite
+    order are not two settings of one pipeline; they are two different pipelines.}
+  \label{fig:ordering}
+\end{figure}

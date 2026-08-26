@@ -1,0 +1,14 @@
+\section{Approach: the config is the program}
+% INTENT: source -> stages -> sinks, and the claim that the ordered list *is*
+% the composition. Registry as single source of truth for schema, editor
+% palette and error messages simultaneously.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/pipeline-anatomy.pdf}
+  \caption{A pipeline: one source, an ordered list of stages, one or more
+    sinks, and the per-frame \texttt{Ctx} that carries state between them.}
+  \label{fig:anatomy}
+\end{figure}
+
+% INTENT: a short YAML listing here, the baseline recipe, annotated.

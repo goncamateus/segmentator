@@ -1,0 +1,18 @@
+# Regenerable: `make media` writes these, and they are large.
+media/
+out/
+
+# LaTeX build products. The figures and generated/*.tex are committed on
+# purpose (see the Makefile) so the PDF builds without running the pipelines;
+# these are just aux files.
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.toc
+main.pdf

@@ -1,0 +1,25 @@
+\section{What this replaced, and what it does not replace}
+% INTENT: two comparisons. (1) the predecessor: 217 LOC over six files, one
+% hardcoded recipe, measured. (2) deep learning: cost of entry (no labels
+% exist), complementary (this tool is how labels get made), interpretability --
+% and the concession that a trained model with labels and a GPU would very
+% likely win on accuracy.
+
+\begin{figure}[t]
+  \begin{subfigure}[t]{\textwidth}
+    \lstinputlisting[style=diff]{generated/legacy-mog2.diff}
+    \caption{The predecessor architecture: \LegacyChanged{} changed lines
+      across \LegacyFiles{} files, one module deleted outright.
+      \emph{Reconstructed} --- the predecessor never supported MOG2, so this is
+      the equivalent change, not a recovered commit; both trees are in
+      \texttt{docs/whitepaper/legacy/}.}
+  \end{subfigure}
+
+  \vspace{4mm}
+  \begin{subfigure}[t]{\textwidth}
+    \lstinputlisting[style=diff]{generated/config-mog2.diff}
+    \caption{The same change here: one line.}
+  \end{subfigure}
+  \caption{Swapping a fixed mean background for adaptive MOG2.}
+  \label{fig:diff}
+\end{figure}

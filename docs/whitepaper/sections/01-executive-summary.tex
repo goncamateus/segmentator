@@ -1,0 +1,17 @@
+\section{Executive summary}
+% INTENT: two paragraphs framing the problem and the result, then the five
+% claims below. Written for a manager who reads this page and nothing else.
+
+\begin{itemize}
+  \item A segmentation recipe is a YAML file: changing the method is a config
+        edit, not a code edit.
+  \item \NumStages{} operators across \NumFamilies{} families compose by
+        ordering alone --- no runtime branching, no feature flags.
+  \item An operator tunes the chain visually with a live per-stage preview, and
+        the same file then runs headless in batch.
+  \item The tool audits its own chains: it proves what can be proved, samples
+        the rest, and says which is which.
+  \item Real time at field resolution on one CPU core and no GPU: every video
+        recipe clears 15~fps at $320\times240$, the slowest
+        (\texttt{\BenchSlowestVideo}) at \BenchSlowestVideoFps~fps.
+\end{itemize}
