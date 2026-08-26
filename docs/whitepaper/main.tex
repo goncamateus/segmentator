@@ -131,6 +131,12 @@ Recife, Brazil}\par
 \end{titlepage}
 
 % --------------------------------------------------------------------------- %
+% Sections only: the subsection level spills the contents onto a second page
+% and earns nothing in a document this size.
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+
 \begin{abstract}
 \noindent
 Segmenting a gas plume from low-resolution thermal video admits no single correct
@@ -152,12 +158,6 @@ truth exists for this footage, so no detection accuracy is claimed.
 \noindent\textbf{Keywords:} video segmentation; configuration-driven pipelines;
 classical computer vision; thermal imaging; gas plume detection; reproducibility.
 \end{abstract}
-
-% Sections only: the subsection level spills the contents onto a second page
-% and earns nothing in a document this size.
-\setcounter{tocdepth}{1}
-\tableofcontents
-\clearpage
 
 \input{sections/01-executive-summary.tex}
 \input{sections/02-problem.tex}
