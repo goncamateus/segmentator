@@ -2,7 +2,7 @@
 
 ## A partir do código-fonte (para desenvolver, ou adicionar um stage)
 
-Requer [uv](https://docs.astral.sh/uv/) e Python 3.13+.
+Requer [uv](https://docs.astral.sh/uv/) e Python 3.12+.
 
 ```bash
 git clone https://github.com/goncamateus/segmentator.git

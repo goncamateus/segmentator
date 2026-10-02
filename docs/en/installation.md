@@ -2,7 +2,7 @@
 
 ## From source (developing on it, or adding a stage)
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.13+.
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
 
 ```bash
 git clone https://github.com/goncamateus/segmentator.git
